@@ -61,7 +61,7 @@ export default function GamePage() {
       {status === 'intro' && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm p-6 text-center">
           <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 mb-6 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]">
-            NEON RACER
+            IQ RACER
           </h1>
           <p className="text-slate-300 text-lg md:text-xl mb-8 max-w-md">
             Speed through the lanes by answering correctly. Wrong turns cause a crash!
