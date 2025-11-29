@@ -1,18 +1,22 @@
 // components/Track.tsx
 import { motion } from 'framer-motion';
+import { useGameStore } from '@/store/useGameStore';
+import Gate from './Gate';
 
 export default function Track() {
+  const { gates } = useGameStore();
+
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-950 perspective-500">
       {/* Moving Grid Floor Effect */}
-      <motion.div 
+      <motion.div
         className="absolute inset-0 opacity-20"
         style={{
           backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(66, 220, 219, .3) 25%, rgba(66, 220, 219, .3) 26%, transparent 27%, transparent 74%, rgba(66, 220, 219, .3) 75%, rgba(66, 220, 219, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(66, 220, 219, .3) 25%, rgba(66, 220, 219, .3) 26%, transparent 27%, transparent 74%, rgba(66, 220, 219, .3) 75%, rgba(66, 220, 219, .3) 76%, transparent 77%, transparent)',
           backgroundSize: '50px 50px'
         }}
         animate={{ backgroundPosition: ['0px 0px', '0px 50px'] }}
-        transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
+        transition={{ repeat: Infinity, duration: 0.2, ease: "linear" }}
       />
 
       {/* The 4 Lanes */}
@@ -24,6 +28,11 @@ export default function Track() {
               {['A', 'B', 'C', 'D'][lane]}
             </div>
           </div>
+        ))}
+
+        {/* Render Gates */}
+        {gates.map((gate) => (
+          <Gate key={gate.id} options={gate.options} position={gate.position} question={gate.question} />
         ))}
       </div>
     </div>
