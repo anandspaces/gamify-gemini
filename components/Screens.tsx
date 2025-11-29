@@ -8,14 +8,14 @@ export function StartScreen() {
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-indigo-950/50 to-slate-950 backdrop-blur-sm p-4 md:p-6 text-center">
             <div className="mb-6 md:mb-8">
                 <h1 className="text-5xl md:text-7xl lg:text-9xl font-black mb-3 md:mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(99,102,241,0.8)] animate-pulse">
-                    NEON RACER
+                    IQ RACER
                 </h1>
                 <div className="h-1.5 md:h-2 w-48 md:w-64 mx-auto bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
             </div>
 
             <div className="max-w-2xl mb-8 md:mb-12 px-4">
                 <p className="text-slate-300 text-base md:text-xl lg:text-2xl mb-4 md:mb-6 leading-relaxed font-medium">
-                    Race through the neon highway and test your knowledge!
+                    Race through the IQ highway and test your knowledge!
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-sm">
                     <div className="bg-slate-900/50 backdrop-blur-sm border border-indigo-500/30 rounded-lg p-3 md:p-4">
