@@ -1,87 +1,148 @@
 // store/useGameStore.ts
 import { create } from 'zustand';
+import { GameState, Gate, GameStatus } from '@/types/game';
 import { questions } from '@/data/questions';
-import { GameState } from '@/types/game';
 
-const TIME_PER_QUESTION = 10;
+const BASE_SPEED = 0.4;
+const SPEED_INCREMENT = 0.05;
+const SPAWN_DISTANCE = 40; // Distance between gates (0-100 scale)
 
 export const useGameStore = create<GameState>((set, get) => ({
   status: 'intro',
-  currentQuestionIndex: 0,
   score: 0,
-  selectedLane: 2, // Start in middle-ish
-  timeLeft: TIME_PER_QUESTION,
+  lives: 3,
+  speed: BASE_SPEED,
+  selectedLane: 1,
+  gates: [],
+  isPaused: false,
+  stats: { correct: 0, total: 0, accuracy: 0 },
+  lastAnswerCorrect: null,
+  usedQuestionIds: [],
 
   actions: {
     startGame: () => {
       set({
         status: 'playing',
-        currentQuestionIndex: 0,
         score: 0,
-        selectedLane: 1, // Reset car position
-        timeLeft: TIME_PER_QUESTION,
+        lives: 3,
+        speed: BASE_SPEED,
+        selectedLane: 1,
+        gates: [],
+        isPaused: false,
+        stats: { correct: 0, total: 0, accuracy: 0 },
+        lastAnswerCorrect: null,
+        usedQuestionIds: [],
       });
+      // Game loop in page.tsx will handle spawning
     },
 
-    selectAnswer: (laneIndex: number) => {
-      const { currentQuestionIndex, score } = get();
-      const currentQ = questions[currentQuestionIndex];
-      const isCorrect = currentQ.answer === laneIndex;
-
-      // Move car immediately
-      set({ selectedLane: laneIndex, status: 'feedback' });
-
-      // Calculate score (add bonus for speed)
-      const newScore = isCorrect ? score + 100 + (get().timeLeft * 10) : score - 50;
-
-      setTimeout(() => {
-        // Wait for animation, then apply score
-        set({ score: newScore });
-        
-        // Small delay to show result colors then move on
-        setTimeout(() => {
-          get().actions.nextQuestion();
-        }, 1500);
-      }, 500); // 500ms for car to arrive at lane
+    togglePause: () => {
+      set((state) => ({ isPaused: !state.isPaused }));
     },
 
-    nextQuestion: () => {
-      const { currentQuestionIndex } = get();
-      const nextIndex = currentQuestionIndex + 1;
+    moveCar: (laneIndex: number) => {
+      set({ selectedLane: laneIndex });
+    },
 
-      if (nextIndex >= questions.length) {
-        set({ status: 'gameover' });
-      } else {
-        set({
-          currentQuestionIndex: nextIndex,
-          status: 'playing',
-          selectedLane: 1, // Reset car to center-ish to keep it dynamic or keep previous? Let's keep previous
-          timeLeft: TIME_PER_QUESTION,
-        });
+    restartGame: () => {
+      get().actions.startGame();
+    },
+
+    tickGameLoop: () => {
+      const state = get();
+      if (state.status !== 'playing' || state.isPaused) return;
+
+      const { gates, speed, selectedLane, lives, score, stats } = state;
+      let newLives = lives;
+      let newScore = score;
+      let newSpeed = speed;
+      let newStatus: GameStatus = state.status;
+      const newStats = { ...stats };
+
+      // 1. Move Gates
+      const newGates = gates.map(gate => ({
+        ...gate,
+        position: gate.position + speed
+      }));
+
+      // 2. Check Collisions & Scoring
+      let feedbackSet = false;
+      newGates.forEach(gate => {
+        if (!gate.passed && gate.position >= 90) { // Hit detection zone (90-100)
+          gate.passed = true; // Mark as processed
+          newStats.total += 1;
+
+          if (selectedLane === gate.answer) {
+            // Correct
+            newScore += 100 + Math.floor(speed * 100);
+            newSpeed += SPEED_INCREMENT;
+            newStats.correct += 1;
+            if (!feedbackSet) {
+              set({ lastAnswerCorrect: true });
+              feedbackSet = true;
+              setTimeout(() => set({ lastAnswerCorrect: null }), 1000); // Clear after 1 second
+            }
+          } else {
+            // Wrong / Crash
+            newScore -= 50; // Negative marking
+            newLives -= 1;
+            if (newLives <= 0) {
+              newStatus = 'gameover';
+            }
+            if (!feedbackSet) {
+              set({ lastAnswerCorrect: false });
+              feedbackSet = true;
+              setTimeout(() => set({ lastAnswerCorrect: null }), 1000); // Clear after 1 second
+            }
+          }
+        }
+      });
+
+      // 3. Cleanup Old Gates
+      const activeGates = newGates.filter(g => g.position < 150);
+
+      // 4. Spawn New Gate
+      const lastGate = activeGates[activeGates.length - 1];
+      if (!lastGate || lastGate.position > SPAWN_DISTANCE) {
+        const { usedQuestionIds } = state;
+
+        // Get unused questions
+        const unusedQuestions = questions.filter(q => !usedQuestionIds.includes(q.id));
+
+        // If all questions used, reset the pool
+        const availableQuestions = unusedQuestions.length > 0 ? unusedQuestions : questions;
+
+        // Pick random question from available pool
+        const randomQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+
+        const newGate: Gate = {
+          id: Date.now(),
+          question: randomQ.question,
+          options: randomQ.options,
+          answer: randomQ.answer,
+          position: -20,
+          passed: false
+        };
+        activeGates.push(newGate);
+
+        // Track this question as used
+        const newUsedIds = unusedQuestions.length > 0
+          ? [...usedQuestionIds, randomQ.id]
+          : [randomQ.id]; // Reset if we cycled through all
+
+        set({ usedQuestionIds: newUsedIds });
       }
-    },
 
-    timeOut: () => {
-      set({ status: 'gameover' });
-    },
+      // 5. Update Stats
+      newStats.accuracy = newStats.total > 0 ? Math.round((newStats.correct / newStats.total) * 100) : 0;
 
-    tickTimer: () => {
-      const { timeLeft, status, actions } = get();
-      if (status !== 'playing') return;
-
-      if (timeLeft > 0) {
-        set({ timeLeft: timeLeft - 1 });
-      } else {
-        actions.timeOut();
-      }
-    },
-
-    resetGame: () => {
       set({
-        status: 'intro',
-        currentQuestionIndex: 0,
-        score: 0,
-        timeLeft: TIME_PER_QUESTION,
+        gates: activeGates,
+        lives: newLives,
+        score: newScore,
+        speed: newSpeed,
+        status: newStatus,
+        stats: newStats
       });
     },
   },
