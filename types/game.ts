@@ -8,18 +8,38 @@ export interface Question {
 
 export type GameStatus = 'intro' | 'playing' | 'feedback' | 'gameover';
 
+export interface Gate {
+  id: number;
+  question: string;
+  options: string[];
+  answer: number;
+  position: number; // 0 (far) to 100 (near)
+  passed: boolean;
+}
+
+export interface GameStats {
+  correct: number;
+  total: number;
+  accuracy: number;
+}
+
 export interface GameState {
   status: GameStatus;
-  currentQuestionIndex: number;
   score: number;
+  lives: number;
+  speed: number;
   selectedLane: number | null; // 0, 1, 2, 3
-  timeLeft: number;
+  gates: Gate[];
+  isPaused: boolean;
+  stats: GameStats;
+  lastAnswerCorrect: boolean | null; // null = no answer yet, true = correct, false = incorrect
+  usedQuestionIds: number[]; // Track used questions to prevent repetition
+
   actions: {
     startGame: () => void;
-    selectAnswer: (laneIndex: number) => void;
-    nextQuestion: () => void;
-    tickTimer: () => void;
-    resetGame: () => void;
-    timeOut: () => void;
+    togglePause: () => void;
+    moveCar: (laneIndex: number) => void;
+    tickGameLoop: () => void;
+    restartGame: () => void;
   };
 }
