@@ -34,6 +34,7 @@ export interface GameState {
   stats: GameStats;
   lastAnswerCorrect: boolean | null; // null = no answer yet, true = correct, false = incorrect
   usedQuestionIds: number[]; // Track used questions to prevent repetition
+  customQuestions: Question[] | null; // Custom questions from API
 
   actions: {
     startGame: () => void;
@@ -41,5 +42,6 @@ export interface GameState {
     moveCar: (laneIndex: number) => void;
     tickGameLoop: () => void;
     restartGame: () => void;
+    loadCustomQuestions: (questions: Question[]) => void;
   };
 }
