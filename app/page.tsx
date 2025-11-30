@@ -1,11 +1,10 @@
 // app/page.tsx
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import Scene from '@/components/Scene';
 import HUD from '@/components/HUD';
-import Controls from '@/components/Controls';
 import { StartScreen, GameOverScreen, PauseScreen } from '@/components/Screens';
 
 export default function GamePage() {
@@ -18,16 +17,90 @@ export default function GamePage() {
 
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Game Loop
+  // Load questions from session ID if present
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (status === 'playing' && !isPaused) {
-      interval = setInterval(() => {
-        actions.tickGameLoop();
-      }, 16); // ~60fps
+    // Check if we're in the browser
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('id');
+
+    if (!sessionId) {
+      console.log('ℹ️ No session ID in URL, using default questions');
+      setLoading(false);
+      return;
     }
-    return () => clearInterval(interval);
+
+    console.log(`🔍 Found session ID in URL: ${sessionId}`);
+    console.log(`📡 Fetching questions from: /api/session/${sessionId}`);
+
+    let mounted = true;
+
+    const loadQuestions = async () => {
+      try {
+        const response = await fetch(`/api/session/${sessionId}`);
+        console.log(`📥 Response status: ${response.status}`);
+
+        const data = await response.json();
+        console.log('📦 Response data:', data);
+
+        if (mounted) {
+          if (data.success && data.questions) {
+            console.log(`✅ Loading ${data.questions.length} custom questions`);
+            console.log('📝 First question:', data.questions[0]);
+            actions.loadCustomQuestions(data.questions);
+            setError(null);
+          } else {
+            console.error('❌ Failed to load questions:', data.error);
+            setError(data.error || 'Session not found or expired');
+          }
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('❌ Error fetching session:', err);
+        if (mounted) {
+          setError('Failed to load questions');
+          setLoading(false);
+        }
+      }
+    };
+
+    loadQuestions();
+
+    return () => {
+      mounted = false;
+    };
+  }, [actions]);
+
+  // Game Loop using requestAnimationFrame
+  useEffect(() => {
+    let animationFrameId: number;
+    let lastTime = performance.now();
+
+    const loop = (time: number) => {
+      if (status === 'playing' && !isPaused) {
+        // Calculate delta time if needed for smoother movement
+        // const deltaTime = time - lastTime;
+        // lastTime = time;
+
+        actions.tickGameLoop();
+        animationFrameId = requestAnimationFrame(loop);
+      }
+    };
+
+    if (status === 'playing' && !isPaused) {
+      lastTime = performance.now();
+      animationFrameId = requestAnimationFrame(loop);
+    }
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [status, isPaused, actions]);
 
   // Keyboard Controls
@@ -138,15 +211,38 @@ export default function GamePage() {
   }, [status, selectedLane, isPaused, actions]);
 
   return (
-    <main className="relative w-full h-screen overflow-hidden bg-slate-950">
+    <main className="relative w-full h-screen overflow-hidden bg-slate-950 touch-none select-none">
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-indigo-400 font-mono animate-pulse">Loading Game...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error Overlay */}
+      {error && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-red-500/50 p-6 rounded-xl max-w-md mx-4 text-center shadow-2xl shadow-red-500/20">
+            <h3 className="text-xl font-bold text-red-400 mb-2">Error Loading Game</h3>
+            <p className="text-slate-300 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3D Scene */}
       {status === 'playing' && <Scene />}
 
       {/* HUD */}
       {status === 'playing' && <HUD />}
-
-      {/* Controls */}
-      {status === 'playing' && <Controls disabled={isPaused} />}
 
       {/* Screens */}
       {status === 'intro' && <StartScreen />}
