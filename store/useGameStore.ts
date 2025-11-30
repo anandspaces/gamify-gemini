@@ -1,10 +1,9 @@
 // store/useGameStore.ts
 import { create } from 'zustand';
 import { GameState, Gate, GameStatus } from '@/types/game';
-import { questions } from '@/data/questions';
 
-const BASE_SPEED = 0.4;
-const SPEED_INCREMENT = 0.05;
+const BASE_SPEED = 0.2;
+const SPEED_INCREMENT = 0.01;
 const SPAWN_DISTANCE = 40; // Distance between gates (0-100 scale)
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -18,8 +17,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   stats: { correct: 0, total: 0, accuracy: 0 },
   lastAnswerCorrect: null,
   usedQuestionIds: [],
+  customQuestions: null,
 
   actions: {
+    loadCustomQuestions: (questions) => {
+      set({ customQuestions: questions, usedQuestionIds: [] });
+    },
+
     startGame: () => {
       set({
         status: 'playing',
@@ -78,21 +82,43 @@ export const useGameStore = create<GameState>((set, get) => ({
             newSpeed += SPEED_INCREMENT;
             newStats.correct += 1;
             if (!feedbackSet) {
-              set({ lastAnswerCorrect: true });
               feedbackSet = true;
-              setTimeout(() => set({ lastAnswerCorrect: null }), 1000); // Clear after 1 second
+              // Use a separate timeout to avoid triggering re-renders during render
+              setTimeout(() => {
+                const currentState = get();
+                if (currentState.status === 'playing') {
+                  set({ lastAnswerCorrect: true });
+                  setTimeout(() => {
+                    const finalState = get();
+                    if (finalState.lastAnswerCorrect === true) {
+                      set({ lastAnswerCorrect: null });
+                    }
+                  }, 1000);
+                }
+              }, 0);
             }
           } else {
             // Wrong / Crash
-            newScore -= 50; // Negative marking
+            newScore = Math.max(0, newScore - 50); // Negative marking, but don't go below 0
             newLives -= 1;
             if (newLives <= 0) {
               newStatus = 'gameover';
             }
             if (!feedbackSet) {
-              set({ lastAnswerCorrect: false });
               feedbackSet = true;
-              setTimeout(() => set({ lastAnswerCorrect: null }), 1000); // Clear after 1 second
+              // Use a separate timeout to avoid triggering re-renders during render
+              setTimeout(() => {
+                const currentState = get();
+                if (currentState.status === 'playing' || currentState.status === 'gameover') {
+                  set({ lastAnswerCorrect: false });
+                  setTimeout(() => {
+                    const finalState = get();
+                    if (finalState.lastAnswerCorrect === false) {
+                      set({ lastAnswerCorrect: null });
+                    }
+                  }, 1000);
+                }
+              }, 0);
             }
           }
         }
@@ -103,37 +129,58 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       // 4. Spawn New Gate
       const lastGate = activeGates[activeGates.length - 1];
-      if (!lastGate || lastGate.position > SPAWN_DISTANCE) {
-        const { usedQuestionIds } = state;
+      const shouldSpawnNewGate = !lastGate || lastGate.position > SPAWN_DISTANCE;
 
-        // Get unused questions
-        const unusedQuestions = questions.filter(q => !usedQuestionIds.includes(q.id));
+      if (shouldSpawnNewGate) {
+        const { usedQuestionIds, customQuestions } = state;
 
-        // If all questions used, reset the pool
-        const availableQuestions = unusedQuestions.length > 0 ? unusedQuestions : questions;
+        // Use custom questions if available, otherwise use default
+        const questionPool = customQuestions || [];
 
-        // Pick random question from available pool
-        const randomQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+        // Only spawn if we have questions available
+        if (questionPool.length > 0) {
+          // Get unused questions
+          const unusedQuestions = questionPool.filter((q) => !usedQuestionIds.includes(q.id));
 
-        const newGate: Gate = {
-          id: Date.now(),
-          question: randomQ.question,
-          options: randomQ.options,
-          answer: randomQ.answer,
-          position: -20,
-          passed: false
-        };
-        activeGates.push(newGate);
+          // If all questions used, reset the pool
+          const availableQuestions = unusedQuestions.length > 0 ? unusedQuestions : questionPool;
 
-        // Track this question as used
-        const newUsedIds = unusedQuestions.length > 0
-          ? [...usedQuestionIds, randomQ.id]
-          : [randomQ.id]; // Reset if we cycled through all
+          // Pick random question from available pool
+          const randomQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
 
-        set({ usedQuestionIds: newUsedIds });
+          const newGate: Gate = {
+            id: Date.now(),
+            question: randomQ.question,
+            options: randomQ.options,
+            answer: randomQ.answer,
+            position: -20,
+            passed: false
+          };
+          activeGates.push(newGate);
+
+          // Track this question as used
+          const newUsedIds = unusedQuestions.length > 0
+            ? [...usedQuestionIds, randomQ.id]
+            : [randomQ.id]; // Reset if we cycled through all
+
+          // Update used IDs in this batch update
+          set({
+            gates: activeGates,
+            lives: newLives,
+            score: newScore,
+            speed: newSpeed,
+            status: newStatus,
+            stats: {
+              ...newStats,
+              accuracy: newStats.total > 0 ? Math.round((newStats.correct / newStats.total) * 100) : 0
+            },
+            usedQuestionIds: newUsedIds
+          });
+          return; // Early return to avoid double set
+        }
       }
 
-      // 5. Update Stats
+      // 5. Update Stats and State (if no new gate spawned)
       newStats.accuracy = newStats.total > 0 ? Math.round((newStats.correct / newStats.total) * 100) : 0;
 
       set({
