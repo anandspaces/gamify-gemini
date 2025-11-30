@@ -6,7 +6,6 @@ export default function HUD() {
   const { score, lives, speed, stats, gates, lastAnswerCorrect, actions } = useGameStore();
 
   // Get the gate that's CLOSEST to the player (highest position, not passed yet)
-  // This ensures we show the question for the gate the player is about to hit
   const visibleGates = gates.filter(g => !g.passed && g.position >= -10);
   const closestGate = visibleGates.length > 0
     ? visibleGates.reduce((closest, gate) => gate.position > closest.position ? gate : closest)
@@ -14,31 +13,38 @@ export default function HUD() {
   const currentQuestion = closestGate?.question || '';
 
   return (
-    <div className="absolute top-0 left-0 w-full h-full p-2 md:p-4 lg:p-6 z-30 pointer-events-none">
-      <div className="h-full flex items-start justify-between gap-2 md:gap-3 lg:gap-4 max-w-[1920px] mx-auto">
+    <div className="absolute inset-0 w-full h-full pointer-events-none z-30 flex flex-col justify-between p-4 md:p-6 select-none">
 
-        {/* LEFT SIDE - Question Display (Responsive) */}
-        <div className="flex-1 max-w-[280px] md:max-w-xs lg:max-w-sm">
+      {/* TOP AREA */}
+      <div className="flex justify-between items-start w-full gap-4">
+
+        {/* LEFT: Question Display */}
+        <div className="flex-1 max-w-sm transform transition-all duration-300">
           {currentQuestion && (
-            <div className={`relative bg-gradient-to-br from-indigo-900/95 to-purple-900/95 backdrop-blur-md px-2 py-1.5 md:px-3 md:py-2 lg:px-4 lg:py-3 rounded-lg border-2 shadow-lg transition-all duration-300 ${lastAnswerCorrect === true
-                ? 'border-green-400/70 shadow-green-400/40'
-                : lastAnswerCorrect === false
-                  ? 'border-red-400/70 shadow-red-400/40'
-                  : 'border-indigo-400/50 shadow-indigo-400/20'
+            <div className={`relative overflow-hidden bg-slate-900/80 backdrop-blur-xl rounded-2xl border shadow-2xl transition-all duration-300 ${lastAnswerCorrect === true
+              ? 'border-green-500/50 shadow-green-500/20'
+              : lastAnswerCorrect === false
+                ? 'border-red-500/50 shadow-red-500/20'
+                : 'border-white/10 shadow-black/40'
               }`}>
-              <div className="text-[8px] md:text-[9px] lg:text-[10px] uppercase tracking-widest text-indigo-300 mb-1 font-bold">Question</div>
-              <div className="text-xs md:text-sm lg:text-base font-bold text-white leading-tight">
-                {currentQuestion}
+              {/* Feedback Glow */}
+              {lastAnswerCorrect !== null && (
+                <div className={`absolute inset-0 opacity-20 ${lastAnswerCorrect ? 'bg-green-500' : 'bg-red-500'}`} />
+              )}
+
+              <div className="relative px-6 py-4 md:px-4 md:py-5">
+                <div className="text-base md:text-lg font-black text-white leading-tight drop-shadow-lg">
+                  {currentQuestion}
+                </div>
               </div>
 
-              {/* Visual Feedback Indicator */}
+              {/* Feedback Icon */}
               {lastAnswerCorrect !== null && (
-                <div className={`absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 rounded-full p-1 md:p-1.5 ${lastAnswerCorrect ? 'bg-green-500' : 'bg-red-500'
-                  } shadow-lg animate-bounce`}>
+                <div className="absolute top-1/2 right-4 -translate-y-1/2">
                   {lastAnswerCorrect ? (
-                    <CheckCircle size={14} className="text-white md:w-4 md:h-4" />
+                    <CheckCircle size={28} className="text-green-400 animate-bounce drop-shadow-lg" />
                   ) : (
-                    <XCircle size={14} className="text-white md:w-4 md:h-4" />
+                    <XCircle size={28} className="text-red-400 animate-bounce drop-shadow-lg" />
                   )}
                 </div>
               )}
@@ -46,78 +52,78 @@ export default function HUD() {
           )}
         </div>
 
-        {/* RIGHT SIDE - All Stats and Controls (Responsive) */}
-        <div className="flex flex-col gap-1.5 md:gap-2 items-end">
+        {/* RIGHT: Stats & Controls */}
+        <div className="flex flex-col gap-3 items-end">
 
-          {/* Pause Button */}
-          <button
-            onClick={actions.togglePause}
-            className="pointer-events-auto bg-slate-900/90 backdrop-blur-sm p-1.5 md:p-2 lg:p-2.5 rounded-lg text-white border-2 border-indigo-500/50 hover:border-indigo-400 hover:bg-indigo-600/30 transition-all shadow-lg"
-          >
-            <Pause size={16} className="md:w-5 md:h-5" />
-          </button>
-
-          {/* Lives Display */}
-          <div className="bg-slate-900/90 backdrop-blur-sm px-2 py-1 md:px-2.5 md:py-1.5 lg:px-3 lg:py-2 rounded-lg border-2 border-red-500/50 shadow-lg">
-            <div className="flex items-center gap-1 mb-0.5 md:mb-1">
-              <Heart size={10} className="text-red-400 md:w-3 md:h-3" />
-              <span className="text-[8px] md:text-[9px] font-bold text-red-100 uppercase tracking-wider">Lives</span>
+          {/* Row 1: Score & Pause */}
+          <div className="flex items-center gap-3">
+            {/* Score */}
+            <div className="bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-md pl-5 pr-6 py-2 rounded-xl border border-yellow-500/20 shadow-lg shadow-yellow-900/10">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                  <Trophy className="text-yellow-400" size={16} />
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-xl md:text-2xl font-black text-yellow-100 leading-none tracking-tight">
+                    {score.toLocaleString()}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-1">
-              {[...Array(3)].map((_, i) => (
-                <Heart
-                  key={i}
-                  size={14}
-                  className={`md:w-[18px] md:h-[18px] transition-all ${i < lives
+
+            {/* Pause Button */}
+            <button
+              onClick={actions.togglePause}
+              className="pointer-events-auto p-3 bg-slate-900/60 backdrop-blur-md rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-slate-800/80 hover:border-indigo-500/50 transition-all shadow-lg group"
+            >
+              <Pause size={20} className="group-hover:scale-110 transition-transform" />
+            </button>
+          </div>
+
+          {/* Row 2: Lives & Speed */}
+          <div className="flex items-center gap-3">
+            {/* Lives */}
+            <div className="flex items-center gap-1 bg-slate-900/60 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-lg">
+              <div className="flex gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <Heart
+                    key={i}
+                    size={18}
+                    className={`transition-all drop-shadow-md ${i < lives
                       ? 'text-red-500 fill-red-500'
                       : 'text-slate-700 fill-slate-800'
-                    }`}
-                />
-              ))}
+                      }`}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Score */}
-          <div className="bg-gradient-to-br from-yellow-900/90 to-amber-900/90 backdrop-blur-sm px-2 py-1 md:px-3 md:py-1.5 lg:px-4 lg:py-2 rounded-lg border-2 border-yellow-500/50 shadow-lg">
-            <div className="flex items-center gap-1 md:gap-1.5">
-              <Trophy className="text-yellow-400" size={14} />
-              <div>
-                <div className="text-[8px] md:text-[9px] font-bold text-yellow-200/80 uppercase tracking-wider">Score</div>
-                <div className="font-mono text-base md:text-lg lg:text-xl font-black text-yellow-100 leading-none">
-                  {score.toLocaleString()}
-                </div>
+            {/* Speed */}
+            <div className="flex items-center gap-3 bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-lg">
+              <div className="p-1 bg-cyan-500/20 rounded-lg">
+                <Zap size={14} className="text-cyan-400" />
+              </div>
+              <div className="font-mono text-base font-bold text-cyan-100 leading-none">
+                {Math.round(speed * 100)} <span className="text-[10px] text-cyan-500/60 font-normal">km/h</span>
               </div>
             </div>
           </div>
 
-          {/* Speed */}
-          <div className="bg-cyan-900/90 backdrop-blur-sm px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg border-2 border-cyan-500/50 shadow-lg">
-            <div className="flex items-center gap-0.5 md:gap-1">
-              <Zap size={10} className="text-cyan-400 md:w-3 md:h-3" />
-              <div>
-                <div className="text-[7px] md:text-[8px] font-bold text-cyan-200/70 uppercase tracking-wider">Speed</div>
-                <div className="font-mono text-xs md:text-sm font-bold text-cyan-100 leading-none">
-                  {Math.round(speed * 100)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Accuracy */}
-          <div className="bg-purple-900/90 backdrop-blur-sm px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg border-2 border-purple-500/50 shadow-lg">
-            <div className="flex items-center gap-0.5 md:gap-1">
-              <Target size={10} className="text-purple-400 md:w-3 md:h-3" />
-              <div>
-                <div className="text-[7px] md:text-[8px] font-bold text-purple-200/70 uppercase tracking-wider">Accuracy</div>
-                <div className="font-mono text-xs md:text-sm font-bold text-purple-100 leading-none">
-                  {stats.accuracy}%
-                </div>
-              </div>
+          {/* Row 3: Accuracy */}
+          <div className="bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-lg flex items-center gap-3">
+            <Target size={14} className="text-purple-400" />
+            <div className="h-3 w-px bg-white/10" />
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Accuracy</span>
+              <span className={`font-mono text-base font-bold ${stats.accuracy >= 80 ? 'text-green-400' :
+                stats.accuracy >= 50 ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                {stats.accuracy}%
+              </span>
             </div>
           </div>
 
         </div>
-
       </div>
     </div>
   );
