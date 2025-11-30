@@ -4,6 +4,14 @@ import { generateQuestions, QuestionRequest } from '@/lib/gemini';
 import { createSession } from '@/lib/sessionStore';
 import { checkRateLimit, getClientIdentifier } from '@/lib/rateLimit';
 
+// Define CORS headers
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*', // Or specify your Flutter app's origin
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400', // 24 hours
+};
+
 export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
@@ -23,6 +31,7 @@ export async function POST(request: NextRequest) {
                 {
                     status: 429,
                     headers: {
+                        ...corsHeaders, // Add CORS headers
                         'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
                         'X-RateLimit-Remaining': String(rateLimit.remaining),
                     }
@@ -36,7 +45,7 @@ export async function POST(request: NextRequest) {
         if (!body.subject || !body.topic || !body.class || !body.chapter) {
             return NextResponse.json(
                 { error: 'Missing required fields: subject, topic, class, chapter', success: false },
-                { status: 400 }
+                { status: 400, headers: corsHeaders } // Add CORS headers
             );
         }
 
@@ -70,12 +79,15 @@ export async function POST(request: NextRequest) {
         const duration = Date.now() - startTime;
         console.log(`✅ Game generated in ${duration}ms for ${clientId}\n`);
 
-        return NextResponse.json({
-            success: true,
-            sessionId,
-            gameUrl,
-            questionCount: questions.length,
-        });
+        return NextResponse.json(
+            {
+                success: true,
+                sessionId,
+                gameUrl,
+                questionCount: questions.length,
+            },
+            { headers: corsHeaders } // Add CORS headers
+        );
 
     } catch (error) {
         const duration = Date.now() - startTime;
@@ -86,19 +98,15 @@ export async function POST(request: NextRequest) {
                 error: error instanceof Error ? error.message : 'Failed to generate game',
                 success: false
             },
-            { status: 500 }
+            { status: 500, headers: corsHeaders } // Add CORS headers
         );
     }
 }
 
-// OPTIONS handler for CORS (if needed for Flutter)
+// OPTIONS handler for CORS preflight
 export async function OPTIONS() {
     return new NextResponse(null, {
-        status: 200,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-        },
+        status: 204,
+        headers: corsHeaders,
     });
 }
