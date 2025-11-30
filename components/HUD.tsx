@@ -40,7 +40,7 @@ export default function HUD() {
 
               {/* Feedback Icon */}
               {lastAnswerCorrect !== null && (
-                <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                <div className="absolute top-1/2 right-4 -translate-y-1/2 hidden lg:block">
                   {lastAnswerCorrect ? (
                     <CheckCircle size={28} className="text-green-400 animate-bounce drop-shadow-lg" />
                   ) : (
