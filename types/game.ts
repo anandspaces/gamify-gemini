@@ -17,6 +17,14 @@ export interface Gate {
   passed: boolean;
 }
 
+export interface Obstacle {
+  id: number;
+  lane: number; // 0-3
+  position: number; // 0 (far) to 100 (near)
+  type: 'barrier' | 'cone' | 'hazard'; // Different obstacle types
+  hit: boolean; // Track if already collided
+}
+
 export interface GameStats {
   correct: number;
   total: number;
@@ -30,6 +38,7 @@ export interface GameState {
   speed: number;
   selectedLane: number | null; // 0, 1, 2, 3
   gates: Gate[];
+  obstacles: Obstacle[]; // New obstacle array
   isPaused: boolean;
   stats: GameStats;
   lastAnswerCorrect: boolean | null; // null = no answer yet, true = correct, false = incorrect
