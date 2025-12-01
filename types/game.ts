@@ -41,7 +41,9 @@ export interface GameState {
   obstacles: Obstacle[]; // New obstacle array
   isPaused: boolean;
   stats: GameStats;
-  lastAnswerCorrect: boolean | null; // null = no answer yet, true = correct, false = incorrect
+  lastAnswerCorrect: boolean | null; // null = no feedback, true = correct, false = wrong
+  currentQuestionText: string | null; // Explicitly manage current question text
+  isTransitioning: boolean; // Block spawning during feedback and transition gap
   usedQuestionIds: number[]; // Track used questions to prevent repetition
   customQuestions: Question[] | null; // Custom questions from API
 
