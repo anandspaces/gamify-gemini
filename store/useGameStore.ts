@@ -5,7 +5,7 @@ import { GameState, Gate, Obstacle, GameStatus } from '@/types/game';
 const BASE_SPEED = 0.1;
 const SPEED_INCREMENT = 0.01;
 const SPAWN_DISTANCE = 60; // Increased from 40 to give more time between gates
-const OBSTACLE_SPAWN_CHANCE = 0.6; // Increased to 60% to ensure obstacles appear between gates
+const OBSTACLE_SPAWN_CHANCE = 0.8; // Increased to 80% to ensure obstacles appear between gates
 const OBSTACLE_TYPES: Array<'barrier' | 'cone' | 'hazard'> = ['barrier', 'cone', 'hazard'];
 
 // Game Logic Constants
@@ -159,24 +159,35 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
 
       // 3. Check Obstacle Collisions
-      // Obstacles collide at position 95-100 (same as gates)
+      // Obstacles collide at position 100 (same as gates)
       newObstacles.forEach(obstacle => {
-        if (!obstacle.hit && obstacle.position >= COLLISION_POS && obstacle.position <= 100) {
+        if (!obstacle.passed && obstacle.position >= COLLISION_POS) {
+          obstacle.passed = true; // Mark as processed so we don't check again
+
           // Check if player is in the same lane
           if (selectedLane === obstacle.lane) {
-            obstacle.hit = true; // Mark as hit
+            obstacle.hit = true; // Mark as hit for visual effects
             newLives -= 1; // Deduct life
             if (newLives <= 0) {
               newStatus = 'gameover';
             }
             // Visual feedback for obstacle hit
             newLastAnswerCorrect = false;
+
+            // Schedule reset of feedback and transition
             setTimeout(() => {
               const currentState = get();
               if (currentState.lastAnswerCorrect === false) {
-                set({ lastAnswerCorrect: null });
+                // End feedback, hide question, start transition gap
+                set({ lastAnswerCorrect: null, currentQuestionText: null, isTransitioning: true });
+
+                // After gap, end transition (allowing spawn)
+                setTimeout(() => {
+                  set({ isTransitioning: false });
+                }, TRANSITION_DELAY);
               }
-            }, 800);
+            }, 800); // Shorter feedback for obstacles? Or use FEEDBACK_DURATION?
+            // Using 800ms as per previous code, but maybe should align with FEEDBACK_DURATION
           }
         }
       });
@@ -201,7 +212,21 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (questionPool.length > 0) {
           const unusedQuestions = questionPool.filter((q) => !usedQuestionIds.includes(q.id));
           const availableQuestions = unusedQuestions.length > 0 ? unusedQuestions : questionPool;
-          const randomQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+
+          // Try to find a valid question up to 3 times to avoid infinite loops
+          let randomQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+          let attempts = 0;
+          while ((!randomQ.options || randomQ.options.length === 0) && attempts < 3) {
+            console.warn(`⚠️ Skipping question "${randomQ.question}" - No options found`);
+            randomQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+            attempts++;
+          }
+
+          // Fallback if still no valid options (should not happen with valid data)
+          if (!randomQ.options || randomQ.options.length === 0) {
+            console.error('❌ Failed to find question with valid options');
+            return;
+          }
 
           const newGate: Gate = {
             id: Date.now(),
@@ -232,7 +257,8 @@ export const useGameStore = create<GameState>((set, get) => ({
               lane: randomLane,
               position: OBSTACLE_SPAWN_POS, // Spawn between gates (gate at -20, obstacle at -10)
               type: randomType,
-              hit: false
+              hit: false,
+              passed: false
             };
             activeObstacles.push(newObstacle);
           }
