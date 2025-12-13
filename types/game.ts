@@ -23,6 +23,7 @@ export interface Obstacle {
   position: number; // 0 (far) to 100 (near)
   type: 'barrier' | 'cone' | 'hazard'; // Different obstacle types
   hit: boolean; // Track if already collided
+  passed: boolean; // Track if passed the player
 }
 
 export interface GameStats {
