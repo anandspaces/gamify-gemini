@@ -2,126 +2,49 @@
 import { Canvas } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import { useGameStore } from '@/store/useGameStore';
-import { useEffect, useState } from 'react';
+import { useResponsiveGame } from '@/lib/responsive.config';
 import Track3D from './Track3D';
 import Car3D from './Car3D';
 import Gate3D from './Gate3D';
+import Obstacle3D from './Obstacle3D';
 
 export default function Scene() {
-    const { gates } = useGameStore();
-    const [isMobile, setIsMobile] = useState(false);
-    const [isTablet, setIsTablet] = useState(false);
-
-    useEffect(() => {
-        const checkDevice = () => {
-            const width = window.innerWidth;
-            setIsMobile(width < 640);
-            setIsTablet(width >= 640 && width < 1024);
-        };
-
-        checkDevice();
-        window.addEventListener('resize', checkDevice);
-        return () => window.removeEventListener('resize', checkDevice);
-    }, []);
-
-    // Responsive camera settings
-    const getCameraSettings = () => {
-        if (isMobile) {
-            return {
-                position: [0, 4, 7] as [number, number, number],
-                fov: 70
-            };
-        }
-        if (isTablet) {
-            return {
-                position: [0, 3.5, 6] as [number, number, number],
-                fov: 65
-            };
-        }
-        return {
-            position: [0, 3, 5] as [number, number, number],
-            fov: 60
-        };
-    };
-
-    // Responsive lighting intensity
-    const getLightingIntensity = () => {
-        if (isMobile) {
-            return {
-                ambient: 0.4,
-                directional: 1.2,
-                secondary: 0.6,
-                point: 0.4
-            };
-        }
-        return {
-            ambient: 0.3,
-            directional: 1.5,
-            secondary: 0.8,
-            point: 0.5
-        };
-    };
-
-    // Responsive stars configuration
-    const getStarsConfig = () => {
-        if (isMobile) {
-            return {
-                count: 2000,
-                factor: 3,
-                speed: 0.8
-            };
-        }
-        if (isTablet) {
-            return {
-                count: 3500,
-                factor: 3.5,
-                speed: 0.9
-            };
-        }
-        return {
-            count: 5000,
-            factor: 4,
-            speed: 1
-        };
-    };
-
-    const cameraSettings = getCameraSettings();
-    const lighting = getLightingIntensity();
-    const starsConfig = getStarsConfig();
+    const { gates, obstacles } = useGameStore();
+    const config = useResponsiveGame();
 
     return (
         <div className="absolute inset-0 w-full h-full bg-slate-950 touch-none">
             <Canvas
                 camera={{
-                    position: cameraSettings.position,
-                    fov: cameraSettings.fov
+                    position: config.camera.position,
+                    fov: config.camera.fov
                 }}
-                dpr={isMobile ? [1, 1.5] : [1, 2]} // Lower pixel ratio on mobile for performance
-                performance={{ min: 0.5 }} // Allow framerate to drop if needed
+                dpr={config.performance.dpr}
+                performance={{ min: 0.5 }}
                 gl={{
-                    powerPreference: isMobile ? 'low-power' : 'high-performance',
-                    antialias: !isMobile, // Disable antialiasing on mobile for performance
+                    powerPreference: config.performance.powerPreference,
+                    antialias: config.performance.antialias,
                     alpha: false,
                     stencil: false,
                     depth: true
                 }}
             >
                 {/* Responsive Lighting */}
-                <ambientLight intensity={lighting.ambient} />
+                <ambientLight intensity={config.lighting.ambient} />
                 <directionalLight
                     position={[5, 10, 5]}
-                    intensity={lighting.directional}
-                    castShadow={!isMobile} // Disable shadows on mobile
-                    shadow-mapSize={isMobile ? [512, 512] : [1024, 1024]}
+                    intensity={config.lighting.directional}
+                    castShadow={config.performance.castShadow}
+                    shadow-mapSize={config.performance.shadowMapSize}
                 />
                 <directionalLight
                     position={[-5, 10, -5]}
-                    intensity={lighting.secondary}
+                    intensity={config.lighting.secondary}
                     color="#4f46e5"
                 />
                 <pointLight
                     position={[0, 5, 0]}
-                    intensity={lighting.point}
+                    intensity={config.lighting.point}
                     color="#818cf8"
                 />
 
@@ -129,13 +52,13 @@ export default function Scene() {
                 <Stars
                     radius={100}
                     depth={50}
-                    count={starsConfig.count}
-                    factor={starsConfig.factor}
+                    count={config.stars.count}
+                    factor={config.stars.factor}
                     saturation={0}
                     fade
-                    speed={starsConfig.speed}
+                    speed={config.stars.speed}
                 />
-                <fog attach="fog" args={['#020617', 10, isMobile ? 60 : 80]} />
+                <fog attach="fog" args={['#020617', 5, config.performance.fogDistance]} />
 
                 {/* Game Objects */}
                 <Track3D />
@@ -144,6 +67,11 @@ export default function Scene() {
                 {/* Gates */}
                 {gates.map((gate) => (
                     <Gate3D key={gate.id} gate={gate} />
+                ))}
+
+                {/* Obstacles */}
+                {obstacles.map((obstacle) => (
+                    <Obstacle3D key={obstacle.id} obstacle={obstacle} />
                 ))}
 
             </Canvas>

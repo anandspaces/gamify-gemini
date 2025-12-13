@@ -1,26 +1,14 @@
 // components/Track3D.tsx
-import { useRef, useState, useEffect, memo } from 'react';
+import { useRef, memo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/useGameStore';
+import { useResponsiveGame } from '@/lib/responsive.config';
 
 function Track3D() {
     const gridRef = useRef<THREE.Group>(null);
     const { speed, isPaused, status } = useGameStore();
-    const [isMobile, setIsMobile] = useState(false);
-    const [isTablet, setIsTablet] = useState(false);
-
-    useEffect(() => {
-        const checkDevice = () => {
-            const width = window.innerWidth;
-            setIsMobile(width < 640);
-            setIsTablet(width >= 640 && width < 1024);
-        };
-
-        checkDevice();
-        window.addEventListener('resize', checkDevice);
-        return () => window.removeEventListener('resize', checkDevice);
-    }, []);
+    const config = useResponsiveGame();
 
     useFrame((state, delta) => {
         if (gridRef.current && status === 'playing' && !isPaused) {
@@ -28,95 +16,7 @@ function Track3D() {
         }
     });
 
-    // Responsive track dimensions
-    const getTrackDimensions = () => {
-        if (isMobile) {
-            return {
-                width: 9, // Wider for better visibility
-                length: 200,
-                lanePositions: [-1.5, -0.5, 0.5, 1.5], // Wider lanes
-                laneDividerWidth: 0.2,
-                edgeOffset: 4.5,
-                edgeWidth: 0.25,
-                barrierHeight: 1.8,
-                barrierOffset: 5.5
-            };
-        }
-        if (isTablet) {
-            return {
-                width: 8.5,
-                length: 200,
-                lanePositions: [-1.5, -0.5, 0.5, 1.5],
-                laneDividerWidth: 0.18,
-                edgeOffset: 4.25,
-                edgeWidth: 0.22,
-                barrierHeight: 1.9,
-                barrierOffset: 5.25
-            };
-        }
-        // Desktop
-        return {
-            width: 8,
-            length: 200,
-            lanePositions: [-2, -0.67, 0.67, 2], // Aligned with Car3D and Gate3D
-            laneDividerWidth: 0.15,
-            edgeOffset: 4,
-            edgeWidth: 0.2,
-            barrierHeight: 2,
-            barrierOffset: 5
-        };
-    };
-
-    // Responsive detail levels
-    const getDetailLevel = () => {
-        if (isMobile) {
-            return {
-                dashCount: 30, // Fewer dashes for performance
-                gridLines: 15, // Fewer grid lines
-                dashLength: 2.5,
-                gridSpacing: 13.33
-            };
-        }
-        if (isTablet) {
-            return {
-                dashCount: 35,
-                gridLines: 18,
-                dashLength: 2.2,
-                gridSpacing: 11.11
-            };
-        }
-        // Desktop
-        return {
-            dashCount: 40,
-            gridLines: 20,
-            dashLength: 2,
-            gridSpacing: 10
-        };
-    };
-
-    // Responsive material properties
-    const getMaterialProps = () => {
-        if (isMobile) {
-            return {
-                roadRoughness: 0.9,
-                roadMetalness: 0.05,
-                barrierEmissive: 1.5,
-                dashOpacity: 0.85,
-                gridOpacity: 0.4
-            };
-        }
-        return {
-            roadRoughness: 0.8,
-            roadMetalness: 0.1,
-            barrierEmissive: 2,
-            dashOpacity: 0.9,
-            gridOpacity: 0.5
-        };
-    };
-
-    const dims = getTrackDimensions();
-    const detail = getDetailLevel();
-    const materials = getMaterialProps();
+    const { track: dims, trackDetail: detail, trackMaterials: materials, isMobile } = config;
 
     return (
         <group>

@@ -1,66 +1,16 @@
 // components/Car3D.tsx
-import { useRef, useState, useEffect, memo } from 'react';
+import { useRef, memo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/store/useGameStore';
 import * as THREE from 'three';
+import { useResponsiveGame } from '@/lib/responsive.config';
 
 function Car3D() {
     const meshRef = useRef<THREE.Group>(null);
     const { selectedLane } = useGameStore();
-    const [isMobile, setIsMobile] = useState(false);
-    const [isTablet, setIsTablet] = useState(false);
+    const config = useResponsiveGame();
 
-    useEffect(() => {
-        const checkDevice = () => {
-            const width = window.innerWidth;
-            setIsMobile(width < 640);
-            setIsTablet(width >= 640 && width < 1024);
-        };
-
-        checkDevice();
-        window.addEventListener('resize', checkDevice);
-        return () => window.removeEventListener('resize', checkDevice);
-    }, []);
-
-    // Responsive lane positioning
-    const getLanePositions = () => {
-        if (isMobile) {
-            // Wider spacing on mobile for easier visibility
-            return [-2.5, -0.83, 0.83, 2.5];
-        }
-        if (isTablet) {
-            return [-2.2, -0.73, 0.73, 2.2];
-        }
-        // Desktop spacing
-        return [-2, -0.67, 0.67, 2];
-    };
-
-    // Responsive car scale
-    const getCarScale = () => {
-        if (isMobile) return 0.8; // Slightly smaller on mobile
-        if (isTablet) return 0.9;
-        return 1.0; // Full size on desktop
-    };
-
-    // Responsive animation speeds
-    const getAnimationSpeed = () => {
-        if (isMobile) {
-            return {
-                laneSwitch: 8, // Slightly slower for smoother mobile performance
-                bobbing: 8,
-                bobbingAmplitude: 0.04
-            };
-        }
-        return {
-            laneSwitch: 10,
-            bobbing: 10,
-            bobbingAmplitude: 0.05
-        };
-    };
-
-    const lanePositions = getLanePositions();
-    const carScale = getCarScale();
-    const animSpeed = getAnimationSpeed();
+    const { lanePositions, car: carConfig, isMobile } = config;
 
     useFrame((state, delta) => {
         if (meshRef.current) {
@@ -70,7 +20,7 @@ function Car3D() {
             meshRef.current.position.x = THREE.MathUtils.lerp(
                 meshRef.current.position.x,
                 targetX,
-                delta * animSpeed.laneSwitch
+                delta * carConfig.animationSpeed.laneSwitch
             );
 
             // Add slight tilt when moving (reduced on mobile)
@@ -78,15 +28,15 @@ function Car3D() {
             const tilt = (meshRef.current.position.x - targetX) * tiltMultiplier;
             meshRef.current.rotation.z = tilt;
 
-            // Bobbing effect with responsive amplitude
+            // Bobbing effect
             meshRef.current.position.y =
-                Math.sin(state.clock.elapsedTime * animSpeed.bobbing) * animSpeed.bobbingAmplitude;
+                Math.sin(state.clock.elapsedTime * carConfig.animationSpeed.bobbing) * carConfig.animationSpeed.bobbingAmplitude;
         }
     });
 
     // Responsive geometry sizes
     const getCarDimensions = () => {
-        const scale = carScale;
+        const scale = carConfig.scale;
         return {
             body: [0.8 * scale, 0.5 * scale, 1.8 * scale] as [number, number, number],
             cabin: [0.7 * scale, 0.4 * scale, 1.0 * scale] as [number, number, number],
@@ -98,14 +48,8 @@ function Car3D() {
 
     const dims = getCarDimensions();
 
-    // Responsive lighting intensity
-    const getLightIntensity = () => {
-        if (isMobile) return 1.5; // Reduced for performance
-        return 2.0;
-    };
-
     return (
-        <group ref={meshRef} position={[0, 0.5, 0]} scale={carScale}>
+        <group ref={meshRef} position={[0, 0.5, 0]} scale={carConfig.scale}>
             {/* Car Body - Enhanced with gradient-like effect */}
             <mesh position={[0, 0.2, 0]} castShadow={!isMobile}>
                 <boxGeometry args={dims.body} />
@@ -132,7 +76,7 @@ function Car3D() {
 
             {/* Front Hood Detail */}
             <mesh position={[0, 0.3, 0.8]}>
-                <boxGeometry args={[0.6 * carScale, 0.1 * carScale, 0.3 * carScale]} />
+                <boxGeometry args={[0.6 * carConfig.scale, 0.1 * carConfig.scale, 0.3 * carConfig.scale]} />
                 <meshStandardMaterial
                     color="#dc2626"
                     metalness={0.9}
@@ -142,7 +86,7 @@ function Car3D() {
 
             {/* Spoiler */}
             <mesh position={[0, 0.7, -0.9]}>
-                <boxGeometry args={[0.8 * carScale, 0.05 * carScale, 0.2 * carScale]} />
+                <boxGeometry args={[0.8 * carConfig.scale, 0.05 * carConfig.scale, 0.2 * carConfig.scale]} />
                 <meshStandardMaterial
                     color="#1e293b"
                     metalness={0.8}
@@ -189,8 +133,8 @@ function Car3D() {
             </mesh>
 
             {/* Headlights */}
-            <mesh position={[-0.3 * carScale, 0.2, 0.9]}>
-                <sphereGeometry args={[0.08 * carScale, isMobile ? 8 : 16, isMobile ? 8 : 16]} />
+            <mesh position={[-0.3 * carConfig.scale, 0.2, 0.9]}>
+                <sphereGeometry args={[0.08 * carConfig.scale, isMobile ? 8 : 16, isMobile ? 8 : 16]} />
                 <meshStandardMaterial
                     color="#ffff00"
                     emissive="#ffff00"
@@ -199,8 +143,8 @@ function Car3D() {
                     roughness={0.2}
                 />
             </mesh>
-            <mesh position={[0.3 * carScale, 0.2, 0.9]}>
-                <sphereGeometry args={[0.08 * carScale, isMobile ? 8 : 16, isMobile ? 8 : 16]} />
+            <mesh position={[0.3 * carConfig.scale, 0.2, 0.9]}>
+                <sphereGeometry args={[0.08 * carConfig.scale, isMobile ? 8 : 16, isMobile ? 8 : 16]} />
                 <meshStandardMaterial
                     color="#ffff00"
                     emissive="#ffff00"
@@ -211,16 +155,16 @@ function Car3D() {
             </mesh>
 
             {/* Tail Lights */}
-            <mesh position={[-0.3 * carScale, 0.15, -0.9]}>
-                <sphereGeometry args={[0.06 * carScale, isMobile ? 8 : 12, isMobile ? 8 : 12]} />
+            <mesh position={[-0.3 * carConfig.scale, 0.15, -0.9]}>
+                <sphereGeometry args={[0.06 * carConfig.scale, isMobile ? 8 : 12, isMobile ? 8 : 12]} />
                 <meshStandardMaterial
                     color="#ff0000"
                     emissive="#ff0000"
                     emissiveIntensity={0.8}
                 />
             </mesh>
-            <mesh position={[0.3 * carScale, 0.15, -0.9]}>
-                <sphereGeometry args={[0.06 * carScale, isMobile ? 8 : 12, isMobile ? 8 : 12]} />
+            <mesh position={[0.3 * carConfig.scale, 0.15, -0.9]}>
+                <sphereGeometry args={[0.06 * carConfig.scale, isMobile ? 8 : 12, isMobile ? 8 : 12]} />
                 <meshStandardMaterial
                     color="#ff0000"
                     emissive="#ff0000"
@@ -232,7 +176,7 @@ function Car3D() {
             <pointLight
                 position={[0, 0, -1]}
                 distance={isMobile ? 4 : 5}
-                intensity={getLightIntensity()}
+                intensity={carConfig.lightIntensity}
                 color="#ef4444"
             />
 
@@ -245,7 +189,7 @@ function Car3D() {
             )}
 
             {/* Underglow effect (desktop only) */}
-            {!isMobile && !isTablet && (
+            {config.isDesktop && (
                 <pointLight position={[0, -0.2, 0]} distance={3} intensity={0.5} color="#6366f1" />
             )}
         </group>

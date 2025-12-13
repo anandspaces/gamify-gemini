@@ -1,8 +1,10 @@
 // components/Gate3D.tsx
-import React, { useRef, useState, useEffect, memo } from 'react';
+import React, { useRef, useState, memo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { Gate } from '@/types/game';
 import * as THREE from 'three';
+import { useResponsiveGame } from '@/lib/responsive.config';
 
 interface Gate3DProps {
     gate: Gate;
@@ -11,7 +13,6 @@ interface Gate3DProps {
 interface GateVisualsProps {
     options: string[];
     isMobile: boolean;
-    isTablet: boolean;
     dims: any;
     lanePositions: number[];
     materials: any;
@@ -197,112 +198,51 @@ const GateVisuals = memo(({ options, isMobile, dims, lanePositions, materials }:
 
 export default function Gate3D({ gate }: Gate3DProps) {
     const groupRef = useRef<THREE.Group>(null);
-    const [isMobile, setIsMobile] = useState(false);
-    const [isTablet, setIsTablet] = useState(false);
+    const config = useResponsiveGame();
+    const [scale, setScale] = useState(0); // For scale-in animation
+    const [opacity, setOpacity] = useState(0); // For fade-in animation
 
-    useEffect(() => {
-        const checkDevice = () => {
-            const width = window.innerWidth;
-            setIsMobile(width < 640);
-            setIsTablet(width >= 640 && width < 1024);
-        };
+    // Animate gate appearance and floating
+    useFrame((state, delta) => {
+        if (groupRef.current) {
+            // Scale-in animation
+            if (scale < 1) {
+                setScale(Math.min(1, scale + delta * 2));
+            }
 
-        checkDevice();
-        window.addEventListener('resize', checkDevice);
-        return () => window.removeEventListener('resize', checkDevice);
-    }, []);
+            // Fade-in animation
+            if (opacity < 1) {
+                setOpacity(Math.min(1, opacity + delta * 1.5));
+            }
+
+            // Floating/bobbing animation
+            const baseY = 0;
+            const floatAmplitude = 0.15;
+            const floatSpeed = 1.5;
+            groupRef.current.position.y = baseY + Math.sin(state.clock.elapsedTime * floatSpeed + gate.id * 0.5) * floatAmplitude;
+
+            // Slight rotation for dynamic feel
+            groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+        }
+    });
 
     // Map store position (0-100) to 3D Z position (-100 to 0)
     const zPos = -100 + gate.position;
 
-    // Responsive gate dimensions
-    const getGateDimensions = () => {
-        if (isMobile) {
-            return {
-                width: 1.4, // Wider for better visibility
-                height: 2.8,
-                depth: 0.12,
-                borderWidth: 1.45,
-                borderHeight: 2.85,
-                badgeRadius: 0.28,
-                fontSize: 0.25, // Slightly smaller text for mobile
-                labelFontSize: 0.32,
-                maxTextWidth: 1.2,
-                textOutline: 0.015
-            };
-        }
-        if (isTablet) {
-            return {
-                width: 1.3,
-                height: 2.6,
-                depth: 0.11,
-                borderWidth: 1.35,
-                borderHeight: 2.65,
-                badgeRadius: 0.27,
-                fontSize: 0.28,
-                labelFontSize: 0.34,
-                maxTextWidth: 1.15,
-                textOutline: 0.012
-            };
-        }
-        // Desktop
-        return {
-            width: 1.2,
-            height: 2.5,
-            depth: 0.1,
-            borderWidth: 1.25,
-            borderHeight: 2.55,
-            badgeRadius: 0.25,
-            fontSize: 0.3,
-            labelFontSize: 0.35,
-            maxTextWidth: 1.1,
-            textOutline: 0.01
-        };
+    // Apply fade-in to materials
+    const materials = {
+        ...config.gateMaterials,
+        opacity: config.gateMaterials.opacity * opacity,
+        emissiveIntensity: config.gateMaterials.emissiveIntensity * opacity,
     };
-
-    // Responsive lane positioning
-    const getLanePositions = () => {
-        if (isMobile) {
-            // Wider spacing on mobile for clearer separation
-            return [-2.5, -0.83, 0.83, 2.5];
-        }
-        if (isTablet) {
-            return [-2.2, -0.73, 0.73, 2.2];
-        }
-        // Desktop spacing
-        return [-2, -0.67, 0.67, 2];
-    };
-
-    // Responsive material properties
-    const getMaterialProps = () => {
-        if (isMobile) {
-            return {
-                metalness: 0.3, // Reduced for performance
-                roughness: 0.5,
-                opacity: 0.9,
-                emissiveIntensity: 0.4
-            };
-        }
-        return {
-            metalness: 0.4,
-            roughness: 0.4,
-            opacity: 0.85,
-            emissiveIntensity: 0.5
-        };
-    };
-
-    const dims = getGateDimensions();
-    const lanePositions = getLanePositions();
-    const materials = getMaterialProps();
 
     return (
-        <group ref={groupRef} position={[0, 0, zPos]}>
+        <group ref={groupRef} position={[0, 0, zPos]} scale={scale}>
             <GateVisuals
                 options={gate.options}
-                isMobile={isMobile}
-                isTablet={isTablet}
-                dims={dims}
-                lanePositions={lanePositions}
+                isMobile={config.isMobile}
+                dims={config.gate}
+                lanePositions={config.lanePositions}
                 materials={materials}
             />
         </group>
