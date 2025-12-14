@@ -5,12 +5,12 @@ import { useGameStore } from '@/store/useGameStore';
 export function StartScreen() {
     const { actions } = useGameStore();
     return (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-indigo-950/50 to-slate-950 backdrop-blur-sm p-4 md:p-6 text-center">
-            <div className="mb-4 sm:mb-6 md:mb-8">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-indigo-950/50 to-slate-950 backdrop-blur-sm p-4 md:p-6 text-center animate-fadeIn">
+            <div className="mb-4 sm:mb-6 md:mb-8 animate-slideDown">
                 <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-black mb-2 sm:mb-3 md:mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(99,102,241,0.8)] animate-pulse leading-tight">
                     IQ RACER
                 </h1>
-                <div className="h-1 sm:h-1.5 md:h-2 w-32 sm:w-48 md:w-64 mx-auto bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                <div className="h-1 sm:h-1.5 md:h-2 w-32 sm:w-48 md:w-64 mx-auto bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full animate-expandWidth" />
             </div>
 
             <div className="max-w-2xl mb-6 sm:mb-8 md:mb-12 px-3 sm:px-4">
@@ -38,11 +38,12 @@ export function StartScreen() {
 
             <button
                 onClick={actions.startGame}
-                className="group relative px-8 py-3 sm:px-10 sm:py-4 md:px-16 md:py-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-lg sm:text-xl md:text-2xl font-black rounded-xl sm:rounded-2xl transition-all shadow-[0_0_40px_rgba(79,70,229,0.6)] hover:shadow-[0_0_60px_rgba(79,70,229,0.9)] hover:scale-105 active:scale-95 overflow-hidden"
+                className="group relative px-8 py-3 sm:px-10 sm:py-4 md:px-16 md:py-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-lg sm:text-xl md:text-2xl font-black rounded-xl sm:rounded-2xl transition-all shadow-[0_0_40px_rgba(79,70,229,0.6)] hover:shadow-[0_0_60px_rgba(79,70,229,0.9)] hover:scale-105 active:scale-95 overflow-hidden animate-slideUp"
             >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
                 <div className="relative flex items-center gap-2 sm:gap-2.5 md:gap-3">
-                    <Play fill="currentColor" size={24} className="sm:w-6 sm:h-6 md:w-7 md:h-7" />
+                    <Play fill="currentColor" size={24} className="sm:w-6 sm:h-6 md:w-7 md:h-7 group-hover:animate-pulse" />
                     <span>START RACE</span>
                 </div>
             </button>
@@ -82,8 +83,8 @@ export function GameOverScreen() {
     const iqInfo = getIQCategory(iqScore);
 
     return (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-950/90 via-slate-950/95 to-slate-950 backdrop-blur-md p-3 sm:p-4 md:p-6 text-center overflow-y-auto">
-            <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-white mb-2 sm:mb-3 md:mb-4 drop-shadow-[0_0_40px_rgba(220,38,38,0.8)]">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-950/90 via-slate-950/95 to-slate-950 backdrop-blur-md p-3 sm:p-4 md:p-6 text-center overflow-y-auto animate-fadeIn">
+            <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-white mb-2 sm:mb-3 md:mb-4 drop-shadow-[0_0_40px_rgba(220,38,38,0.8)] animate-slideDown">
                 RACE OVER
             </h2>
 
@@ -124,11 +125,12 @@ export function GameOverScreen() {
 
             <button
                 onClick={actions.restartGame}
-                className="group relative px-8 py-3 sm:px-10 sm:py-4 md:px-12 md:py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-base sm:text-lg md:text-xl font-black rounded-xl transition-all shadow-[0_0_30px_rgba(99,102,241,0.5)] hover:shadow-[0_0_50px_rgba(99,102,241,0.8)] hover:scale-105 active:scale-95 overflow-hidden"
+                className="group relative px-8 py-3 sm:px-10 sm:py-4 md:px-12 md:py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-base sm:text-lg md:text-xl font-black rounded-xl transition-all shadow-[0_0_30px_rgba(99,102,241,0.5)] hover:shadow-[0_0_50px_rgba(99,102,241,0.8)] hover:scale-105 active:scale-95 overflow-hidden animate-slideUp"
             >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
                 <div className="relative flex items-center gap-2 sm:gap-2.5 md:gap-3">
-                    <RotateCcw size={18} className="sm:w-5 sm:h-5" />
+                    <RotateCcw size={18} className="sm:w-5 sm:h-5 group-hover:rotate-180 transition-transform duration-500" />
                     <span>RACE AGAIN</span>
                 </div>
             </button>
