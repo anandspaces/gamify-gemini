@@ -22,15 +22,15 @@ export default function Obstacle3D({ obstacle }: Obstacle3DProps) {
     const xPos = config.lanePositions[obstacle.lane];
 
     // Rotation animation - only for rocks
-    useFrame((state) => {
+    useFrame((state, delta) => {
         if (groupRef.current && obstacle.type === 'hazard') {
             // Rotate rocks for dynamic feel
-            groupRef.current.rotation.y = state.clock.elapsedTime * 1.5;
+            groupRef.current.rotation.y += delta * 2;
         }
 
         if (groupRef.current) {
-            // Add slight bobbing for all obstacles
-            groupRef.current.position.y = 0.5 + Math.sin(state.clock.elapsedTime * 2) * 0.05;
+            // Add slight bobbing for all obstacles - more grounded
+            groupRef.current.position.y = 0.02 + Math.sin(state.clock.elapsedTime * 2) * 0.02;
         }
     });
 
