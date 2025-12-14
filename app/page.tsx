@@ -214,10 +214,19 @@ export default function GamePage() {
     <main className="relative w-full h-screen overflow-hidden bg-slate-950 touch-none select-none">
       {/* Loading Overlay */}
       {loading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-b from-slate-950 via-indigo-950/30 to-slate-950 animate-fadeIn">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-indigo-400 font-mono animate-pulse">Loading Game...</p>
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-indigo-500/30 rounded-full"></div>
+              <div className="absolute inset-0 w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute inset-0 w-16 h-16 border-4 border-purple-500 border-b-transparent rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
+            </div>
+            <p className="text-indigo-400 font-mono animate-pulse text-lg font-bold">Loading Game...</p>
+            <div className="flex gap-1">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
           </div>
         </div>
       )}
