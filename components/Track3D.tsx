@@ -20,7 +20,7 @@ function Track3D() {
 
     return (
         <group>
-            {/* Main Road Surface - Dark asphalt with texture */}
+            {/* Main Road Surface - Dark asphalt with realistic texture */}
             <mesh
                 rotation={[-Math.PI / 2, 0, 0]}
                 position={[0, -0.5, -50]}
@@ -34,16 +34,37 @@ function Track3D() {
                 />
             </mesh>
 
-            {/* Subtle Road Texture Overlay (Desktop only) */}
+            {/* Road Texture Overlay with noise pattern */}
             {!isMobile && (
-                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.49, -50]}>
-                    <planeGeometry args={[dims.width, dims.length]} />
-                    <meshBasicMaterial
-                        color="#0a0a0a"
-                        opacity={0.3}
-                        transparent
-                    />
-                </mesh>
+                <>
+                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.49, -50]}>
+                        <planeGeometry args={[dims.width, dims.length]} />
+                        <meshBasicMaterial
+                            color="#0a0a0a"
+                            opacity={0.3}
+                            transparent
+                        />
+                    </mesh>
+                    {/* Asphalt grain effect */}
+                    {Array.from({ length: 50 }).map((_, i) => (
+                        <mesh 
+                            key={i} 
+                            rotation={[-Math.PI / 2, 0, 0]} 
+                            position={[
+                                (Math.random() - 0.5) * dims.width,
+                                -0.485,
+                                -100 + Math.random() * 200
+                            ]}
+                        >
+                            <circleGeometry args={[0.05 + Math.random() * 0.1, 8]} />
+                            <meshBasicMaterial
+                                color="#0a0a0a"
+                                opacity={0.15}
+                                transparent
+                            />
+                        </mesh>
+                    ))}
+                </>
             )}
 
             {/* Lane Dividers - White dashed lines (3 dividers for 4 lanes) */}
