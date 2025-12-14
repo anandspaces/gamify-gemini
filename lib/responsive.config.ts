@@ -212,8 +212,8 @@ export function getResponsiveConfig(deviceType: DeviceType, screenWidth: number 
                 },
 
                 camera: {
-                    position: [0, 3.2, 6], // Adjusted for narrower lanes
-                    fov: 75, // Wider FOV for better mobile view
+                    position: [0, 3.5, 6.5], // Higher and further back for better mobile view
+                    fov: 70, // Balanced FOV for mobile
                 },
 
                 lighting: {
