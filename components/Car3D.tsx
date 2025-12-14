@@ -7,7 +7,9 @@ import { useResponsiveGame } from '@/lib/responsive.config';
 
 function Car3D() {
     const meshRef = useRef<THREE.Group>(null);
-    const { selectedLane } = useGameStore();
+    const wheelRefs = useRef<THREE.Mesh[]>([]);
+    const shadowRef = useRef<THREE.Mesh>(null);
+    const { selectedLane, speed } = useGameStore();
     const config = useResponsiveGame();
 
     const { lanePositions, car: carConfig, isMobile } = config;
@@ -28,9 +30,24 @@ function Car3D() {
             const tilt = (meshRef.current.position.x - targetX) * tiltMultiplier;
             meshRef.current.rotation.z = tilt;
 
-            // Bobbing effect
-            meshRef.current.position.y =
-                Math.sin(state.clock.elapsedTime * carConfig.animationSpeed.bobbing) * carConfig.animationSpeed.bobbingAmplitude;
+            // Subtle bobbing effect - more realistic suspension
+            const bobbingY = Math.sin(state.clock.elapsedTime * carConfig.animationSpeed.bobbing) * carConfig.animationSpeed.bobbingAmplitude;
+            meshRef.current.position.y = 0.05 + bobbingY;
+
+            // Rotate wheels based on speed
+            wheelRefs.current.forEach((wheel) => {
+                if (wheel) {
+                    wheel.rotation.x -= speed * delta * 20;
+                }
+            });
+
+            // Update shadow
+            if (shadowRef.current) {
+                shadowRef.current.position.x = meshRef.current.position.x;
+                // Shadow size and opacity based on car height
+                const shadowScale = 1 - (meshRef.current.position.y - 0.05) * 0.5;
+                shadowRef.current.scale.set(shadowScale, shadowScale, shadowScale);
+            }
         }
     });
 
@@ -49,9 +66,26 @@ function Car3D() {
     const dims = getCarDimensions();
 
     return (
-        <group ref={meshRef} position={[0, 0.5, 0]} scale={carConfig.scale}>
-            {/* Car Body - Enhanced with gradient-like effect */}
-            <mesh position={[0, 0.2, 0]} castShadow={!isMobile}>
+        <>
+            {/* Ground Shadow - Contact Shadow for realistic ground effect */}
+            <mesh 
+                ref={shadowRef}
+                rotation={[-Math.PI / 2, 0, 0]} 
+                position={[0, -0.48, 0]}
+                receiveShadow={false}
+            >
+                <circleGeometry args={[1.2 * carConfig.scale, 32]} />
+                <meshBasicMaterial 
+                    color="#000000" 
+                    transparent 
+                    opacity={0.4}
+                    depthWrite={false}
+                />
+            </mesh>
+
+            <group ref={meshRef} position={[0, 0.05, 0]} scale={carConfig.scale}>
+                {/* Car Body - Enhanced with gradient-like effect */}
+                <mesh position={[0, 0.2, 0]} castShadow={!isMobile}>
                 <boxGeometry args={dims.body} />
                 <meshStandardMaterial
                     color="#ef4444"
@@ -95,21 +129,41 @@ function Car3D() {
             </mesh>
 
             {/* Front Wheels */}
-            <mesh position={[-dims.wheelOffset, 0, 0.5]} rotation={[0, 0, Math.PI / 2]} castShadow={!isMobile}>
+            <mesh 
+                ref={(el) => { if (el) wheelRefs.current[0] = el; }}
+                position={[-dims.wheelOffset, 0, 0.5]} 
+                rotation={[0, 0, Math.PI / 2]} 
+                castShadow={!isMobile}
+            >
                 <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
                 <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
             </mesh>
-            <mesh position={[dims.wheelOffset, 0, 0.5]} rotation={[0, 0, Math.PI / 2]} castShadow={!isMobile}>
+            <mesh 
+                ref={(el) => { if (el) wheelRefs.current[1] = el; }}
+                position={[dims.wheelOffset, 0, 0.5]} 
+                rotation={[0, 0, Math.PI / 2]} 
+                castShadow={!isMobile}
+            >
                 <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
                 <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
             </mesh>
 
             {/* Rear Wheels */}
-            <mesh position={[-dims.wheelOffset, 0, -0.5]} rotation={[0, 0, Math.PI / 2]} castShadow={!isMobile}>
+            <mesh 
+                ref={(el) => { if (el) wheelRefs.current[2] = el; }}
+                position={[-dims.wheelOffset, 0, -0.5]} 
+                rotation={[0, 0, Math.PI / 2]} 
+                castShadow={!isMobile}
+            >
                 <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
                 <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
             </mesh>
-            <mesh position={[dims.wheelOffset, 0, -0.5]} rotation={[0, 0, Math.PI / 2]} castShadow={!isMobile}>
+            <mesh 
+                ref={(el) => { if (el) wheelRefs.current[3] = el; }}
+                position={[dims.wheelOffset, 0, -0.5]} 
+                rotation={[0, 0, Math.PI / 2]} 
+                castShadow={!isMobile}
+            >
                 <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
                 <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
             </mesh>
@@ -192,7 +246,8 @@ function Car3D() {
             {config.isDesktop && (
                 <pointLight position={[0, -0.2, 0]} distance={3} intensity={0.5} color="#6366f1" />
             )}
-        </group>
+            </group>
+        </>
     );
 }
 export default memo(Car3D);
