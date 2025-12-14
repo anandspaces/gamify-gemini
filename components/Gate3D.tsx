@@ -207,22 +207,22 @@ export default function Gate3D({ gate }: Gate3DProps) {
         if (groupRef.current) {
             // Scale-in animation
             if (scale < 1) {
-                setScale(Math.min(1, scale + delta * 2));
+                setScale(Math.min(1, scale + delta * 3));
             }
 
             // Fade-in animation
             if (opacity < 1) {
-                setOpacity(Math.min(1, opacity + delta * 1.5));
+                setOpacity(Math.min(1, opacity + delta * 2));
             }
 
-            // Floating/bobbing animation
+            // Floating/bobbing animation - more subtle
             const baseY = 0;
-            const floatAmplitude = 0.15;
-            const floatSpeed = 1.5;
+            const floatAmplitude = 0.08;
+            const floatSpeed = 1.2;
             groupRef.current.position.y = baseY + Math.sin(state.clock.elapsedTime * floatSpeed + gate.id * 0.5) * floatAmplitude;
 
-            // Slight rotation for dynamic feel
-            groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+            // Very subtle rotation for dynamic feel
+            groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.02;
         }
     });
 
