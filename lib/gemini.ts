@@ -15,6 +15,8 @@ export interface GeneratedQuestion {
     answer: number;
 }
 
+const GEMINI_MODEL = 'gemini-3-flash-preview';
+
 export async function generateQuestions(
     request: QuestionRequest
 ): Promise<GeneratedQuestion[]> {
@@ -26,7 +28,7 @@ export async function generateQuestions(
 
     const genAI = new GoogleGenerativeAI(apiKey);
     // Using Gemini 2.0 Flash - faster and more cost-effective
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const prompt = `You are an expert educator creating quiz questions for students.
 
