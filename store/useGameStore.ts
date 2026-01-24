@@ -12,7 +12,7 @@ const OBSTACLE_TYPES: Array<'barrier' | 'cone' | 'hazard'> = ['barrier', 'cone',
 const GATE_SPAWN_POS = -20;
 const OBSTACLE_SPAWN_POS = -10;
 const QUESTION_HIDE_POS = 95;
-const COLLISION_POS = 100; // Changed to 100 to simulate passing through the gate
+const COLLISION_POS = 98; // Trigger collision when car touches gate (earlier for immediate reaction)
 const CLEANUP_POS = 150;
 const FEEDBACK_DURATION = 1500;
 const TRANSITION_DELAY = 500; // Gap between feedback end and new question
@@ -92,7 +92,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }));
 
       // 2. Check Gate Collisions & Scoring
-      // Collision happens at position 98-100 (very close to car)
+      // Collision happens at position 95 (immediate reaction when car touches gate)
       let feedbackSet = false;
       let newLastAnswerCorrect = state.lastAnswerCorrect;
 
@@ -159,7 +159,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
 
       // 3. Check Obstacle Collisions
-      // Obstacles collide at position 100 (same as gates)
+      // Obstacles collide at position 95 (same as gates - immediate reaction)
       newObstacles.forEach(obstacle => {
         if (!obstacle.passed && obstacle.position >= COLLISION_POS) {
           obstacle.passed = true; // Mark as processed so we don't check again
