@@ -4,14 +4,10 @@ import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/store/useGameStore';
 import * as THREE from 'three';
 import { useResponsiveGame } from '@/lib/responsive.config';
-
+import { CarProps } from '@/types/types';
 import { motion } from 'framer-motion';
 import { CarFront } from 'lucide-react';
 
-interface CarProps {
-    lane: number; // 0 to 3
-    isCrash?: boolean;
-}
 
 export function Car({ lane, isCrash }: CarProps) {
     // Calculate percentage position for 4 lanes (12.5%, 37.5%, 62.5%, 87.5%)

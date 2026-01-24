@@ -1,13 +1,5 @@
 // lib/sessionStore.ts
-import { GeneratedQuestion } from './gemini';
-
-interface Session {
-    id: string;
-    questions: GeneratedQuestion[];
-    createdAt: number;
-    expiresAt: number;
-    accessCount: number;
-}
+import { Session, GeneratedQuestion } from '../types/types';
 
 // Configuration
 const SESSION_TTL = 60 * 60 * 1000; // 1 hour

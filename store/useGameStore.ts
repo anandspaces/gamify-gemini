@@ -1,6 +1,6 @@
 // store/useGameStore.ts
 import { create } from 'zustand';
-import { GameState, Gate, Obstacle, GameStatus } from '@/types/game';
+import { GameState, Gate, Obstacle, GameStatus } from '@/types/types';
 
 const BASE_SPEED = 0.1;
 const SPEED_INCREMENT = 0.01;

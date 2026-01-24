@@ -4,32 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useResponsiveGame } from '@/lib/responsive.config';
-export interface Gate {
-    id: number;
-    question: string;
-    options: string[];
-    answer: number;
-    position: number; // 0 (far) to 100 (near)
-    passed: boolean;
-}
-interface Gate3DProps {
-    gate: Gate;
-}
-
-interface GateVisualsProps {
-    options: string[];
-    isMobile: boolean;
-    dims: any;
-    lanePositions: number[];
-    materials: any;
-}
-// components/Gate.tsx
-
-interface GateProps {
-    options: string[];
-    position: number; // 0 to 100
-    question: string;
-}
+import { GateProps, GateVisualsProps, Gate3DProps } from '@/types/types';
 
 export function Gate({ options, position, question }: GateProps) {
     // Map position (0-100) to visual depth/scale

@@ -1,19 +1,6 @@
 // lib/gemini.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
-export interface QuestionRequest {
-    subject: string;
-    topic: string;
-    class: string;
-    chapter: string;
-}
-
-export interface GeneratedQuestion {
-    id: number;
-    question: string;
-    options: string[];
-    answer: number;
-}
+import { QuestionRequest, GeneratedQuestion } from '@/types/types';
 
 const GEMINI_MODEL = 'gemini-3-flash-preview';
 

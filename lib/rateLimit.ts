@@ -1,14 +1,10 @@
 // lib/rateLimit.ts
+
+import { RateLimitEntry, RateLimitConfig } from '@/types/types';
 /**
  * Simple in-memory rate limiter for API endpoints
  * Prevents abuse by limiting requests per IP
  */
-
-interface RateLimitEntry {
-    count: number;
-    resetAt: number;
-}
-
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
 // Cleanup old entries every 10 minutes
@@ -20,11 +16,6 @@ setInterval(() => {
         }
     }
 }, 10 * 60 * 1000);
-
-export interface RateLimitConfig {
-    maxRequests: number; // Max requests per window
-    windowMs: number; // Time window in milliseconds
-}
 
 export function checkRateLimit(
     identifier: string,

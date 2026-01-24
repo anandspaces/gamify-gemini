@@ -2,21 +2,14 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { ParticleEffectProps } from '@/types/types';
 
-interface ParticleEffectProps {
-    position: [number, number, number];
-    color: string;
-    count?: number;
-    duration?: number;
-    onComplete?: () => void;
-}
-
-export default function ParticleEffect({ 
-    position, 
-    color, 
-    count = 20, 
+export default function ParticleEffect({
+    position,
+    color,
+    count = 20,
     duration = 1,
-    onComplete 
+    onComplete
 }: ParticleEffectProps) {
     const groupRef = useRef<THREE.Group>(null);
     const startTime = useRef(Date.now());
@@ -29,7 +22,7 @@ export default function ParticleEffect({
             const vx = Math.cos(angle) * speed;
             const vy = Math.random() * 3 + 2;
             const vz = Math.sin(angle) * speed;
-            
+
             particleData.push({
                 velocity: new THREE.Vector3(vx, vy, vz),
                 size: 0.1 + Math.random() * 0.15,
@@ -41,7 +34,7 @@ export default function ParticleEffect({
     useFrame((state, delta) => {
         if (groupRef.current) {
             const elapsed = (Date.now() - startTime.current) / 1000;
-            
+
             if (elapsed > duration) {
                 if (onComplete) onComplete();
                 return;
@@ -52,19 +45,19 @@ export default function ParticleEffect({
 
             groupRef.current.children.forEach((particle, i) => {
                 const data = particles[i];
-                
+
                 // Apply velocity
                 particle.position.x += data.velocity.x * delta;
                 particle.position.y += data.velocity.y * delta;
                 particle.position.z += data.velocity.z * delta;
-                
+
                 // Apply gravity
                 data.velocity.y -= 9.8 * delta;
-                
+
                 // Update material opacity
                 const material = (particle as THREE.Mesh).material as THREE.MeshBasicMaterial;
                 material.opacity = opacity;
-                
+
                 // Scale down over time
                 const scale = 1 - progress * 0.5;
                 particle.scale.set(scale, scale, scale);
@@ -77,9 +70,9 @@ export default function ParticleEffect({
             {particles.map((particle, i) => (
                 <mesh key={i} position={[0, 0, 0]}>
                     <sphereGeometry args={[particle.size, 8, 8]} />
-                    <meshBasicMaterial 
-                        color={color} 
-                        transparent 
+                    <meshBasicMaterial
+                        color={color}
+                        transparent
                         opacity={1}
                         depthWrite={false}
                     />

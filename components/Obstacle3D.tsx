@@ -1,20 +1,9 @@
 // components/Obstacle3D.tsx
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Obstacle } from '@/types/game';
 import * as THREE from 'three';
 import { useResponsiveGame } from '@/lib/responsive.config';
-
-interface ObstacleCarProps {
-    isMobile: boolean;
-}
-interface Obstacle3DProps {
-    obstacle: Obstacle;
-}
-
-interface ObstacleRockProps {
-    isMobile: boolean;
-}
+import { ObstacleCarProps, ObstacleRockProps, Obstacle3DProps } from '@/types/types';
 
 export default function Obstacle3D({ obstacle }: Obstacle3DProps) {
     const groupRef = useRef<THREE.Group>(null);
