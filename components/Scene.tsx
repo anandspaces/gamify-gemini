@@ -5,7 +5,7 @@ import { useGameStore } from '@/store/useGameStore';
 import { useResponsiveGame } from '@/lib/responsive.config';
 import Track3D from './Track3D';
 import Car3D from './Car3D';
-import Gate3D from './Gate3D';
+import { Gate3D } from './Gate3D';
 import Obstacle3D from './Obstacle3D';
 import SpeedLines from './SpeedLines';
 import { useEffect, useRef } from 'react';
