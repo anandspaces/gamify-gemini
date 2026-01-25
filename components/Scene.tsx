@@ -1,5 +1,6 @@
 // components/Scene.tsx
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useMemo } from 'react';
 import { Stars } from '@react-three/drei';
 import { useGameStore } from '@/store/useGameStore';
 import { useResponsiveGame } from '@/lib/responsive.config';
@@ -7,9 +8,153 @@ import Track3D from './Track3D';
 import Car3D from './Car3D';
 import { Gate3D } from './Gate3D';
 import Obstacle3D from './Obstacle3D';
-import SpeedLines from './SpeedLines';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { ParticleEffectProps } from '@/types/types';
+
+export function SpeedLines() {
+    const groupRef = useRef<THREE.Group>(null);
+    const { speed, isPaused, status } = useGameStore();
+    const config = useResponsiveGame();
+
+    // Generate speed lines
+    const lines = useMemo(() => {
+        const lineCount = config.isMobile ? 20 : 40;
+        const lineData = [];
+
+        for (let i = 0; i < lineCount; i++) {
+            const angle = (Math.PI * 2 * i) / lineCount;
+            const radius = 3 + Math.random() * 2;
+            const x = Math.cos(angle) * radius;
+            const y = Math.random() * 4 - 1;
+            const z = -Math.random() * 50;
+            const length = 0.5 + Math.random() * 1.5;
+
+            lineData.push({ x, y, z, length, speed: 0.5 + Math.random() * 0.5 });
+        }
+
+        return lineData;
+    }, [config.isMobile]);
+
+    useFrame((state, delta) => {
+        if (groupRef.current && status === 'playing' && !isPaused) {
+            groupRef.current.children.forEach((line, i) => {
+                const lineData = lines[i];
+                // Move lines forward based on game speed
+                line.position.z += speed * 30 * delta * lineData.speed;
+
+                // Reset position when line passes camera
+                if (line.position.z > 5) {
+                    line.position.z = -50;
+                }
+
+                // Fade based on speed
+                const material = (line as THREE.Mesh).material as THREE.MeshBasicMaterial;
+                material.opacity = Math.min(speed * 0.8, 0.6);
+            });
+        }
+    });
+
+    return (
+        <group ref={groupRef}>
+            {lines.map((line, i) => (
+                <mesh
+                    key={i}
+                    position={[line.x, line.y, line.z]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                >
+                    <planeGeometry args={[0.05, line.length]} />
+                    <meshBasicMaterial
+                        color="#ffffff"
+                        transparent
+                        opacity={0.3}
+                        depthWrite={false}
+                    />
+                </mesh>
+            ))}
+        </group>
+    );
+}
+
+
+function ParticleEffect({
+    position,
+    color,
+    count = 20,
+    duration = 1,
+    onComplete
+}: ParticleEffectProps) {
+    const groupRef = useRef<THREE.Group>(null);
+    const startTime = useRef(Date.now());
+
+    const particles = useMemo(() => {
+        const particleData = [];
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const speed = 2 + Math.random() * 3;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.random() * 3 + 2;
+            const vz = Math.sin(angle) * speed;
+
+            particleData.push({
+                velocity: new THREE.Vector3(vx, vy, vz),
+                size: 0.1 + Math.random() * 0.15,
+            });
+        }
+        return particleData;
+    }, [count]);
+
+    useFrame((state, delta) => {
+        if (groupRef.current) {
+            const elapsed = (Date.now() - startTime.current) / 1000;
+
+            if (elapsed > duration) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            const progress = elapsed / duration;
+            const opacity = 1 - progress;
+
+            groupRef.current.children.forEach((particle, i) => {
+                const data = particles[i];
+
+                // Apply velocity
+                particle.position.x += data.velocity.x * delta;
+                particle.position.y += data.velocity.y * delta;
+                particle.position.z += data.velocity.z * delta;
+
+                // Apply gravity
+                data.velocity.y -= 9.8 * delta;
+
+                // Update material opacity
+                const material = (particle as THREE.Mesh).material as THREE.MeshBasicMaterial;
+                material.opacity = opacity;
+
+                // Scale down over time
+                const scale = 1 - progress * 0.5;
+                particle.scale.set(scale, scale, scale);
+            });
+        }
+    });
+
+    return (
+        <group ref={groupRef} position={position}>
+            {particles.map((particle, i) => (
+                <mesh key={i} position={[0, 0, 0]}>
+                    <sphereGeometry args={[particle.size, 8, 8]} />
+                    <meshBasicMaterial
+                        color={color}
+                        transparent
+                        opacity={1}
+                        depthWrite={false}
+                    />
+                </mesh>
+            ))}
+        </group>
+    );
+}
+
 
 // Camera shake component
 function CameraShake() {
