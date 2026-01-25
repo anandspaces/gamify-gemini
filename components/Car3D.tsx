@@ -1,5 +1,5 @@
 // components/Car3D.tsx
-import { useRef, memo } from 'react';
+import { useRef, memo, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/store/useGameStore';
 import * as THREE from 'three';
@@ -7,6 +7,7 @@ import { useResponsiveGame } from '@/lib/responsive.config';
 import { CarProps } from '@/types/types';
 import { motion } from 'framer-motion';
 import { CarFront } from 'lucide-react';
+import { RoundedBox } from '@react-three/drei';
 
 
 export function Car({ lane, isCrash }: CarProps) {
@@ -90,48 +91,169 @@ export function Car({ lane, isCrash }: CarProps) {
     );
 }
 
+// Exhaust Particle System Component
+function ExhaustParticles({ position, speed }: { position: [number, number, number]; speed: number }) {
+    const particlesRef = useRef<THREE.Points>(null);
+    const particleCount = 20;
+
+    const particles = useMemo(() => {
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = new Float32Array(particleCount * 3);
+        const lifetimes = new Float32Array(particleCount);
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 0.1;
+            positions[i * 3 + 1] = Math.random() * 0.1;
+            positions[i * 3 + 2] = Math.random() * 0.2;
+
+            velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+            velocities[i * 3 + 1] = Math.random() * 0.05;
+            velocities[i * 3 + 2] = -Math.random() * 0.1;
+
+            lifetimes[i] = Math.random();
+        }
+
+        return { positions, velocities, lifetimes };
+    }, []);
+
+    useFrame((state, delta) => {
+        if (particlesRef.current && speed > 0.05) {
+            const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.lifetimes[i] -= delta * 2;
+
+                if (particles.lifetimes[i] <= 0) {
+                    // Reset particle
+                    positions[i * 3] = (Math.random() - 0.5) * 0.1;
+                    positions[i * 3 + 1] = 0;
+                    positions[i * 3 + 2] = 0;
+                    particles.lifetimes[i] = 1;
+                } else {
+                    // Update particle position
+                    positions[i * 3] += particles.velocities[i * 3];
+                    positions[i * 3 + 1] += particles.velocities[i * 3 + 1];
+                    positions[i * 3 + 2] += particles.velocities[i * 3 + 2];
+                }
+            }
+
+            particlesRef.current.geometry.attributes.position.needsUpdate = true;
+        }
+    });
+
+    if (speed < 0.05) return null;
+
+    return (
+        <points ref={particlesRef} position={position}>
+            <bufferGeometry>
+                <bufferAttribute
+                    attach="attributes-position"
+                    args={[particles.positions, 3]}
+                />
+            </bufferGeometry>
+            <pointsMaterial
+                size={0.05}
+                color="#666666"
+                transparent
+                opacity={0.3}
+                sizeAttenuation
+                depthWrite={false}
+            />
+        </points>
+    );
+}
+
 export function Car3D() {
     const meshRef = useRef<THREE.Group>(null);
     const wheelRefs = useRef<THREE.Mesh[]>([]);
     const shadowRef = useRef<THREE.Mesh>(null);
-    const { selectedLane, speed } = useGameStore();
+    const brakeLightRefs = useRef<THREE.Mesh[]>([]);
+    const suspensionRef = useRef({ compression: 0, velocity: 0 });
+    const previousLane = useRef<number>(1);
+
+    const { selectedLane, speed, lastAnswerCorrect } = useGameStore();
     const config = useResponsiveGame();
 
     const { lanePositions, car: carConfig, isMobile } = config;
 
+    // Create environment map for reflections
+    const envMap = useMemo(() => {
+        if (isMobile) return null;
+        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+        return cubeRenderTarget.texture;
+    }, [isMobile]);
+
     useFrame((state, delta) => {
         if (meshRef.current) {
             const targetX = lanePositions[selectedLane ?? 1];
+            const currentX = meshRef.current.position.x;
 
             // Smooth lerp with responsive speed
             meshRef.current.position.x = THREE.MathUtils.lerp(
-                meshRef.current.position.x,
+                currentX,
                 targetX,
                 delta * carConfig.animationSpeed.laneSwitch
             );
 
-            // Add slight tilt when moving (reduced on mobile)
+            // Enhanced tilt with banking effect during lane changes
             const tiltMultiplier = isMobile ? 0.3 : 0.5;
-            const tilt = (meshRef.current.position.x - targetX) * tiltMultiplier;
-            meshRef.current.rotation.z = tilt;
+            const lateralVelocity = (targetX - currentX) * 2;
+            const tilt = lateralVelocity * tiltMultiplier;
+            meshRef.current.rotation.z = THREE.MathUtils.lerp(
+                meshRef.current.rotation.z,
+                tilt,
+                delta * 8
+            );
 
-            // Subtle bobbing effect - more realistic suspension
+            // Advanced suspension system with spring physics
+            const targetHeight = 0.05;
+            const springStrength = 15;
+            const damping = 0.8;
+
+            // Calculate suspension compression based on speed and lane changes
+            const speedBump = Math.sin(state.clock.elapsedTime * 10) * 0.01 * speed;
+            const laneChangeCompression = Math.abs(lateralVelocity) * 0.02;
+
+            suspensionRef.current.velocity += (targetHeight - meshRef.current.position.y) * springStrength * delta;
+            suspensionRef.current.velocity *= damping;
+            suspensionRef.current.compression = speedBump + laneChangeCompression;
+
             const bobbingY = Math.sin(state.clock.elapsedTime * carConfig.animationSpeed.bobbing) * carConfig.animationSpeed.bobbingAmplitude;
-            meshRef.current.position.y = 0.05 + bobbingY;
+            meshRef.current.position.y = targetHeight + bobbingY + suspensionRef.current.compression;
 
-            // Rotate wheels based on speed
+            // Rotate wheels based on speed with realistic physics
             wheelRefs.current.forEach((wheel) => {
                 if (wheel) {
                     wheel.rotation.x -= speed * delta * 20;
                 }
             });
 
-            // Update shadow
+            // Brake lights activation during deceleration or wrong answer
+            const isBraking = lastAnswerCorrect === false || speed < 0.08;
+            brakeLightRefs.current.forEach((light) => {
+                if (light) {
+                    const targetIntensity = isBraking ? 1.5 : 0.8;
+                    const currentMaterial = light.material as THREE.MeshStandardMaterial;
+                    currentMaterial.emissiveIntensity = THREE.MathUtils.lerp(
+                        currentMaterial.emissiveIntensity,
+                        targetIntensity,
+                        delta * 10
+                    );
+                }
+            });
+
+            // Update shadow with realistic projection
             if (shadowRef.current) {
                 shadowRef.current.position.x = meshRef.current.position.x;
-                // Shadow size and opacity based on car height
                 const shadowScale = 1 - (meshRef.current.position.y - 0.05) * 0.5;
                 shadowRef.current.scale.set(shadowScale, shadowScale, shadowScale);
+                const shadowOpacity = 0.4 * shadowScale;
+                (shadowRef.current.material as THREE.MeshBasicMaterial).opacity = shadowOpacity;
+            }
+
+            // Track lane changes for effects
+            if (selectedLane !== previousLane.current) {
+                previousLane.current = selectedLane ?? 1;
             }
         }
     });
@@ -169,117 +291,185 @@ export function Car3D() {
             </mesh>
 
             <group ref={meshRef} position={[0, 0.05, 0]} scale={carConfig.scale}>
-                {/* Car Body - Enhanced with gradient-like effect */}
-                <mesh position={[0, 0.2, 0]} castShadow={!isMobile}>
-                    <boxGeometry args={dims.body} />
+                {/* Car Body - Enhanced with RoundedBox for smooth edges */}
+                <RoundedBox
+                    args={dims.body}
+                    radius={0.08 * carConfig.scale}
+                    smoothness={4}
+                    position={[0, 0.2, 0]}
+                    castShadow={!isMobile}
+                >
                     <meshStandardMaterial
                         color="#ef4444"
-                        metalness={isMobile ? 0.7 : 0.8}
-                        roughness={isMobile ? 0.3 : 0.2}
+                        metalness={isMobile ? 0.7 : 0.85}
+                        roughness={isMobile ? 0.3 : 0.15}
                         emissive="#ef4444"
                         emissiveIntensity={0.1}
+                        envMap={envMap}
+                        envMapIntensity={0.5}
                     />
-                </mesh>
+                </RoundedBox>
 
-                {/* Cabin/Windshield */}
-                <mesh position={[0, 0.6, -0.2]} castShadow={!isMobile}>
-                    <boxGeometry args={dims.cabin} />
+                {/* Cabin/Windshield - Rounded for realism */}
+                <RoundedBox
+                    args={dims.cabin}
+                    radius={0.06 * carConfig.scale}
+                    smoothness={4}
+                    position={[0, 0.6, -0.2]}
+                    castShadow={!isMobile}
+                >
                     <meshStandardMaterial
                         color="#1e293b"
-                        metalness={isMobile ? 0.8 : 0.9}
-                        roughness={0.1}
+                        metalness={isMobile ? 0.8 : 0.95}
+                        roughness={0.05}
                         transparent
-                        opacity={0.9}
+                        opacity={0.85}
+                        envMap={envMap}
+                        envMapIntensity={0.8}
                     />
-                </mesh>
+                </RoundedBox>
 
-                {/* Front Hood Detail */}
-                <mesh position={[0, 0.3, 0.8]}>
-                    <boxGeometry args={[0.6 * carConfig.scale, 0.1 * carConfig.scale, 0.3 * carConfig.scale]} />
+                {/* Front Hood Detail with Rounded Edges */}
+                <RoundedBox
+                    args={[0.6 * carConfig.scale, 0.1 * carConfig.scale, 0.3 * carConfig.scale]}
+                    radius={0.02 * carConfig.scale}
+                    smoothness={2}
+                    position={[0, 0.3, 0.8]}
+                >
                     <meshStandardMaterial
                         color="#dc2626"
                         metalness={0.9}
                         roughness={0.1}
+                        envMap={envMap}
                     />
-                </mesh>
+                </RoundedBox>
 
-                {/* Spoiler */}
-                <mesh position={[0, 0.7, -0.9]}>
-                    <boxGeometry args={[0.8 * carConfig.scale, 0.05 * carConfig.scale, 0.2 * carConfig.scale]} />
+                {/* Spoiler with aerodynamic shape */}
+                <RoundedBox
+                    args={[0.8 * carConfig.scale, 0.05 * carConfig.scale, 0.2 * carConfig.scale]}
+                    radius={0.01 * carConfig.scale}
+                    smoothness={2}
+                    position={[0, 0.7, -0.9]}
+                >
                     <meshStandardMaterial
                         color="#1e293b"
                         metalness={0.8}
                         roughness={0.2}
                     />
-                </mesh>
+                </RoundedBox>
 
-                {/* Front Wheels */}
-                <mesh
-                    ref={(el) => { if (el) wheelRefs.current[0] = el; }}
-                    position={[-dims.wheelOffset, 0, 0.5]}
-                    rotation={[0, 0, Math.PI / 2]}
-                    castShadow={!isMobile}
-                >
-                    <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
-                    <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
-                </mesh>
-                <mesh
-                    ref={(el) => { if (el) wheelRefs.current[1] = el; }}
-                    position={[dims.wheelOffset, 0, 0.5]}
-                    rotation={[0, 0, Math.PI / 2]}
-                    castShadow={!isMobile}
-                >
-                    <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
-                    <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
-                </mesh>
+                {/* Front Wheels with Treads */}
+                <group position={[-dims.wheelOffset, 0, 0.5]}>
+                    <mesh
+                        ref={(el) => { if (el) wheelRefs.current[0] = el; }}
+                        rotation={[0, 0, Math.PI / 2]}
+                        castShadow={!isMobile}
+                    >
+                        <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
+                        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
+                    </mesh>
+                    {/* Tire Tread Details */}
+                    {!isMobile && (
+                        <>
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
+                                <mesh
+                                    key={i}
+                                    rotation={[0, 0, Math.PI / 2]}
+                                    position={[0, 0, 0]}
+                                >
+                                    <torusGeometry args={[dims.wheelRadius * 0.95, 0.01, 4, 16, Math.PI / 3]} />
+                                    <meshStandardMaterial color="#0a0a0a" roughness={1} />
+                                </mesh>
+                            ))}
+                        </>
+                    )}
+                </group>
 
-                {/* Rear Wheels */}
-                <mesh
-                    ref={(el) => { if (el) wheelRefs.current[2] = el; }}
-                    position={[-dims.wheelOffset, 0, -0.5]}
-                    rotation={[0, 0, Math.PI / 2]}
-                    castShadow={!isMobile}
-                >
-                    <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
-                    <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
-                </mesh>
-                <mesh
-                    ref={(el) => { if (el) wheelRefs.current[3] = el; }}
-                    position={[dims.wheelOffset, 0, -0.5]}
-                    rotation={[0, 0, Math.PI / 2]}
-                    castShadow={!isMobile}
-                >
-                    <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
-                    <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
-                </mesh>
+                <group position={[dims.wheelOffset, 0, 0.5]}>
+                    <mesh
+                        ref={(el) => { if (el) wheelRefs.current[1] = el; }}
+                        rotation={[0, 0, Math.PI / 2]}
+                        castShadow={!isMobile}
+                    >
+                        <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
+                        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
+                    </mesh>
+                </group>
 
-                {/* Wheel Rims */}
+                {/* Rear Wheels with Treads */}
+                <group position={[-dims.wheelOffset, 0, -0.5]}>
+                    <mesh
+                        ref={(el) => { if (el) wheelRefs.current[2] = el; }}
+                        rotation={[0, 0, Math.PI / 2]}
+                        castShadow={!isMobile}
+                    >
+                        <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
+                        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
+                    </mesh>
+                </group>
+
+                <group position={[dims.wheelOffset, 0, -0.5]}>
+                    <mesh
+                        ref={(el) => { if (el) wheelRefs.current[3] = el; }}
+                        rotation={[0, 0, Math.PI / 2]}
+                        castShadow={!isMobile}
+                    >
+                        <cylinderGeometry args={[dims.wheelRadius, dims.wheelRadius, dims.wheelWidth, isMobile ? 12 : 16]} />
+                        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
+                    </mesh>
+                </group>
+
+                {/* Enhanced Wheel Rims with Chrome Effect */}
                 <mesh position={[-dims.wheelOffset, 0, 0.5]} rotation={[0, 0, Math.PI / 2]}>
                     <cylinderGeometry args={[dims.wheelRadius * 0.6, dims.wheelRadius * 0.6, dims.wheelWidth * 0.3, isMobile ? 8 : 12]} />
-                    <meshStandardMaterial color="#silver" metalness={1} roughness={0.1} />
+                    <meshStandardMaterial
+                        color="#c0c0c0"
+                        metalness={1}
+                        roughness={0.05}
+                        envMap={envMap}
+                        envMapIntensity={1}
+                    />
                 </mesh>
                 <mesh position={[dims.wheelOffset, 0, 0.5]} rotation={[0, 0, Math.PI / 2]}>
                     <cylinderGeometry args={[dims.wheelRadius * 0.6, dims.wheelRadius * 0.6, dims.wheelWidth * 0.3, isMobile ? 8 : 12]} />
-                    <meshStandardMaterial color="#silver" metalness={1} roughness={0.1} />
+                    <meshStandardMaterial
+                        color="#c0c0c0"
+                        metalness={1}
+                        roughness={0.05}
+                        envMap={envMap}
+                        envMapIntensity={1}
+                    />
                 </mesh>
                 <mesh position={[-dims.wheelOffset, 0, -0.5]} rotation={[0, 0, Math.PI / 2]}>
                     <cylinderGeometry args={[dims.wheelRadius * 0.6, dims.wheelRadius * 0.6, dims.wheelWidth * 0.3, isMobile ? 8 : 12]} />
-                    <meshStandardMaterial color="#silver" metalness={1} roughness={0.1} />
+                    <meshStandardMaterial
+                        color="#c0c0c0"
+                        metalness={1}
+                        roughness={0.05}
+                        envMap={envMap}
+                        envMapIntensity={1}
+                    />
                 </mesh>
                 <mesh position={[dims.wheelOffset, 0, -0.5]} rotation={[0, 0, Math.PI / 2]}>
                     <cylinderGeometry args={[dims.wheelRadius * 0.6, dims.wheelRadius * 0.6, dims.wheelWidth * 0.3, isMobile ? 8 : 12]} />
-                    <meshStandardMaterial color="#silver" metalness={1} roughness={0.1} />
+                    <meshStandardMaterial
+                        color="#c0c0c0"
+                        metalness={1}
+                        roughness={0.05}
+                        envMap={envMap}
+                        envMapIntensity={1}
+                    />
                 </mesh>
 
-                {/* Headlights */}
+                {/* Headlights with Better Glow */}
                 <mesh position={[-0.3 * carConfig.scale, 0.2, 0.9]}>
                     <sphereGeometry args={[0.08 * carConfig.scale, isMobile ? 8 : 16, isMobile ? 8 : 16]} />
                     <meshStandardMaterial
                         color="#ffff00"
                         emissive="#ffff00"
-                        emissiveIntensity={1}
+                        emissiveIntensity={1.2}
                         metalness={0.5}
-                        roughness={0.2}
+                        roughness={0.1}
                     />
                 </mesh>
                 <mesh position={[0.3 * carConfig.scale, 0.2, 0.9]}>
@@ -287,14 +477,17 @@ export function Car3D() {
                     <meshStandardMaterial
                         color="#ffff00"
                         emissive="#ffff00"
-                        emissiveIntensity={1}
+                        emissiveIntensity={1.2}
                         metalness={0.5}
-                        roughness={0.2}
+                        roughness={0.1}
                     />
                 </mesh>
 
-                {/* Tail Lights */}
-                <mesh position={[-0.3 * carConfig.scale, 0.15, -0.9]}>
+                {/* Tail Lights with Dynamic Brightness */}
+                <mesh
+                    ref={(el) => { if (el) brakeLightRefs.current[0] = el; }}
+                    position={[-0.3 * carConfig.scale, 0.15, -0.9]}
+                >
                     <sphereGeometry args={[0.06 * carConfig.scale, isMobile ? 8 : 12, isMobile ? 8 : 12]} />
                     <meshStandardMaterial
                         color="#ff0000"
@@ -302,7 +495,10 @@ export function Car3D() {
                         emissiveIntensity={0.8}
                     />
                 </mesh>
-                <mesh position={[0.3 * carConfig.scale, 0.15, -0.9]}>
+                <mesh
+                    ref={(el) => { if (el) brakeLightRefs.current[1] = el; }}
+                    position={[0.3 * carConfig.scale, 0.15, -0.9]}
+                >
                     <sphereGeometry args={[0.06 * carConfig.scale, isMobile ? 8 : 12, isMobile ? 8 : 12]} />
                     <meshStandardMaterial
                         color="#ff0000"
@@ -311,7 +507,27 @@ export function Car3D() {
                     />
                 </mesh>
 
-                {/* Responsive Glow Effects */}
+                {/* Exhaust Pipes */}
+                <mesh position={[-0.25 * carConfig.scale, 0, -0.95]}>
+                    <cylinderGeometry args={[0.04 * carConfig.scale, 0.04 * carConfig.scale, 0.1 * carConfig.scale, 8]} />
+                    <meshStandardMaterial color="#2a2a2a" metalness={0.9} roughness={0.3} />
+                </mesh>
+                <mesh position={[0.25 * carConfig.scale, 0, -0.95]}>
+                    <cylinderGeometry args={[0.04 * carConfig.scale, 0.04 * carConfig.scale, 0.1 * carConfig.scale, 8]} />
+                    <meshStandardMaterial color="#2a2a2a" metalness={0.9} roughness={0.3} />
+                </mesh>
+
+                {/* Exhaust Particle Effects */}
+                <ExhaustParticles
+                    position={[-0.25 * carConfig.scale, 0, -1] as [number, number, number]}
+                    speed={speed}
+                />
+                <ExhaustParticles
+                    position={[0.25 * carConfig.scale, 0, -1] as [number, number, number]}
+                    speed={speed}
+                />
+
+                {/* Enhanced Lighting System */}
                 <pointLight
                     position={[0, 0, -1]}
                     distance={isMobile ? 4 : 5}
@@ -319,17 +535,63 @@ export function Car3D() {
                     color="#ef4444"
                 />
 
-                {/* Headlight beams (reduced on mobile) */}
+                {/* Headlight beams with volumetric effect */}
                 {!isMobile && (
                     <>
-                        <pointLight position={[-0.3, 0.2, 1]} distance={8} intensity={1.5} color="#ffff88" />
-                        <pointLight position={[0.3, 0.2, 1]} distance={8} intensity={1.5} color="#ffff88" />
+                        <spotLight
+                            position={[-0.3 * carConfig.scale, 0.2, 0.9]}
+                            angle={0.4}
+                            penumbra={0.5}
+                            intensity={2}
+                            distance={10}
+                            color="#ffff88"
+                            target-position={[0, 0, 10]}
+                        />
+                        <spotLight
+                            position={[0.3 * carConfig.scale, 0.2, 0.9]}
+                            angle={0.4}
+                            penumbra={0.5}
+                            intensity={2}
+                            distance={10}
+                            color="#ffff88"
+                            target-position={[0, 0, 10]}
+                        />
                     </>
                 )}
 
-                {/* Underglow effect (desktop only) */}
+                {/* Underglow effect (desktop only) - Enhanced */}
                 {config.isDesktop && (
-                    <pointLight position={[0, -0.2, 0]} distance={3} intensity={0.5} color="#6366f1" />
+                    <>
+                        <pointLight position={[0, -0.2, 0]} distance={3} intensity={0.8} color="#6366f1" />
+                        <pointLight position={[-0.3, -0.2, 0.5]} distance={2} intensity={0.4} color="#8b5cf6" />
+                        <pointLight position={[0.3, -0.2, 0.5]} distance={2} intensity={0.4} color="#8b5cf6" />
+                    </>
+                )}
+
+                {/* Side Mirror Details */}
+                <mesh position={[-0.45 * carConfig.scale, 0.4, 0.2]}>
+                    <boxGeometry args={[0.08 * carConfig.scale, 0.12 * carConfig.scale, 0.05 * carConfig.scale]} />
+                    <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+                </mesh>
+                <mesh position={[0.45 * carConfig.scale, 0.4, 0.2]}>
+                    <boxGeometry args={[0.08 * carConfig.scale, 0.12 * carConfig.scale, 0.05 * carConfig.scale]} />
+                    <meshStandardMaterial color="#1e293b" metalness={0.7} roughness={0.3} />
+                </mesh>
+
+                {/* Front Grille */}
+                <mesh position={[0, 0.15, 0.91]}>
+                    <boxGeometry args={[0.5 * carConfig.scale, 0.15 * carConfig.scale, 0.02 * carConfig.scale]} />
+                    <meshStandardMaterial color="#0a0a0a" metalness={0.8} roughness={0.4} />
+                </mesh>
+
+                {/* Racing Stripes (optional detail) */}
+                {!isMobile && (
+                    <>
+                        <mesh position={[0, 0.46, 0]}>
+                            <boxGeometry args={[0.1 * carConfig.scale, 0.01 * carConfig.scale, 1.8 * carConfig.scale]} />
+                            <meshStandardMaterial color="#ffffff" metalness={0.9} roughness={0.1} />
+                        </mesh>
+                    </>
                 )}
             </group>
         </>
