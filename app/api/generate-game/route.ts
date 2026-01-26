@@ -1,6 +1,7 @@
 // app/api/generate-game/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { generateQuestions, QuestionRequest } from '@/lib/gemini';
+import { generateQuestions } from '@/lib/gemini';
+import { QuestionRequest } from '@/types/types';
 import { createSession } from '@/lib/sessionStore';
 import { checkRateLimit, getClientIdentifier } from '@/lib/rateLimit';
 
