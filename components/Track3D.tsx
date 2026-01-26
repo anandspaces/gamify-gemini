@@ -14,7 +14,6 @@ const GRID_SETTINGS = {
     DESKTOP: { size: '50px 50px', duration: 0.2 },
 } as const;
 
-const LANE_LABELS = ['A', 'B', 'C', 'D'] as const;
 const LANE_DIVIDER_POSITIONS = [-1.33, 0, 1.33] as const;
 
 // Memoized Grid Background Component
@@ -51,11 +50,6 @@ const Lane = memo(({ lane, isMobile }: { lane: number; isMobile: boolean }) => {
         <div
             className="relative flex-1 h-full border-r border-dashed border-indigo-500/15 sm:border-indigo-500/20 last:border-none"
         >
-            {/* Lane Number/Indicator */}
-            <div className="absolute bottom-12 xs:bottom-16 sm:bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 text-indigo-900 font-black text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl opacity-15 sm:opacity-20 select-none pointer-events-none">
-                {LANE_LABELS[lane]}
-            </div>
-
             {/* Lane Markers (Distance Indicators) */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 sm:w-1.5">
                 {Array.from({ length: markerCount }).map((_, i) => (
